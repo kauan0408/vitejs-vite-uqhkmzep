@@ -1,0 +1,1 @@
+export { default } from "./SobrePage.jsx";

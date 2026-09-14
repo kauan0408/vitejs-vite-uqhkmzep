@@ -1,0 +1,1859 @@
+/* src/pages/QuemMeDeve/QuemMeDevePage.css */
+
+.devedores-page {
+  display: grid;
+  gap: 14px;
+}
+
+.devedores-cabecalho,
+.devedores-toolbar,
+.devedores-top-actions,
+.devedor-historico-top,
+.devedor-item-actions,
+.devedor-acoes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.devedores-cabecalho h2,
+.devedores-cabecalho p,
+.devedores-toolbar h3 {
+  margin: 0;
+}
+
+.devedores-cabecalho p {
+  margin-top: 4px;
+  opacity: 0.75;
+}
+
+.devedores-top-actions {
+  flex-shrink: 0;
+}
+
+.devedores-help {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.devedores-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(59, 130, 246, 0.24);
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.devedores-feedback button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.devedores-resumo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.devedores-resumo > div,
+.devedor-status-grid > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.devedores-resumo small,
+.devedor-status-grid small {
+  opacity: 0.7;
+}
+
+.devedores-lista {
+  display: grid;
+  gap: 12px;
+}
+
+/* Carta tipo reveal: fechada mostra o resumo; aberta revela os detalhes. */
+.devedor-reveal-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: linear-gradient(
+    145deg,
+    rgba(30, 41, 59, 0.94),
+    rgba(15, 23, 42, 0.96)
+  );
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.devedor-reveal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 58% 0 0;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.18),
+    transparent
+  );
+  transform: skewX(-12deg) translateX(-35%);
+  pointer-events: none;
+}
+
+.devedor-reveal-frente {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) auto;
+  gap: 10px 16px;
+  align-items: center;
+  padding: 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.devedor-identidade {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.devedor-identidade > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.devedor-identidade strong {
+  overflow-wrap: anywhere;
+}
+
+.devedor-identidade small {
+  opacity: 0.7;
+}
+
+.devedor-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.2);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.devedor-saldo-area {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.devedor-saldo-area small {
+  opacity: 0.65;
+}
+
+.devedor-saldo-area b {
+  font-size: 18px;
+}
+
+.devedor-mini-info {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  opacity: 0.78;
+}
+
+.devedor-progress {
+  grid-column: 1 / -1;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.devedor-progress > div {
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.72);
+}
+
+.devedor-reveal-conteudo {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 16px;
+  opacity: 0;
+  transform: translateY(-12px);
+  transition:
+    max-height 0.45s ease,
+    opacity 0.28s ease,
+    transform 0.35s ease,
+    padding 0.35s ease;
+}
+
+.devedor-reveal-card.aberto .devedor-reveal-conteudo {
+  max-height: 6000px;
+  padding: 4px 16px 16px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.devedor-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.devedor-status-grid strong {
+  overflow-wrap: anywhere;
+}
+
+.devedor-acoes {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.devedor-acoes > button {
+  width: auto;
+}
+
+.danger-soft {
+  border-color: rgba(239, 68, 68, 0.25) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.devedor-historico-detalhado {
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.devedor-historico-titulo h4,
+.devedor-historico-titulo p {
+  margin: 0;
+}
+
+.devedor-historico-titulo p {
+  margin-top: 4px;
+}
+
+.devedor-historico-lista {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.devedor-historico-item {
+  padding: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.devedor-historico-top > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.devedor-historico-top strong {
+  overflow-wrap: anywhere;
+}
+
+.devedor-tipo {
+  width: max-content;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.7px;
+}
+
+.devedor-tipo.divida {
+  background: rgba(34, 197, 94, 0.12);
+  color: #86efac;
+}
+
+.devedor-tipo.nulo {
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+}
+
+.devedor-dados-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.devedor-dados-grid > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.devedor-dados-grid small {
+  opacity: 0.62;
+}
+
+.devedor-dados-grid span {
+  overflow-wrap: anywhere;
+}
+
+.devedor-observacao {
+  margin-bottom: 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  opacity: 0.85;
+}
+
+.devedor-item-actions {
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.devedor-item-actions > button {
+  width: auto;
+}
+
+.devedores-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 16px;
+  background: rgba(2, 6, 23, 0.76);
+}
+
+.devedores-modal-card {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: 92vh;
+  display: grid;
+  gap: 12px;
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  background: #111827;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.devedores-modal-card h3 {
+  margin: 0;
+  padding-right: 34px;
+}
+
+.devedores-modal-card label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.devedores-modal-card input,
+.devedores-modal-card select,
+.devedores-modal-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.devedores-modal-card .fechar {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.devedores-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.devedor-calculo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.22);
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.devedores-ajuda {
+  display: grid;
+  gap: 8px;
+}
+
+.devedores-ajuda p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.devedores-vazio {
+  display: grid;
+  gap: 4px;
+  padding: 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  text-align: center;
+  opacity: 0.8;
+}
+
+@media (max-width: 700px) {
+  .devedores-resumo {
+    grid-template-columns: 1fr;
+  }
+
+  .devedor-status-grid,
+  .devedor-dados-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .devedores-cabecalho {
+    align-items: flex-start;
+  }
+
+  .devedores-top-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .devedor-reveal-frente {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .devedores-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .devedores-cabecalho {
+    display: grid;
+  }
+
+  .devedores-top-actions {
+    justify-content: flex-start;
+  }
+
+  .devedor-status-grid,
+  .devedor-dados-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .devedor-acoes > button,
+  .devedor-item-actions > button {
+    width: 100%;
+  }
+
+  .devedor-item-actions {
+    display: grid;
+  }
+}
+
+/* =====================================================
+   VERSÃO MULTIPESSOAS + FOTO/ÁUDIO
+===================================================== */
+
+.devedor-reveal-card {
+  border-color: color-mix(in srgb, var(--devedor-accent, #3b82f6) 28%, rgba(255,255,255,.08));
+}
+
+.devedor-reveal-card::before {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--devedor-accent, #3b82f6) 28%, transparent),
+    transparent
+  );
+}
+
+.devedor-avatar {
+  border-color: color-mix(in srgb, var(--devedor-accent, #3b82f6) 60%, transparent);
+  background: color-mix(in srgb, var(--devedor-accent, #3b82f6) 22%, transparent);
+}
+
+.devedor-avatar-foto {
+  object-fit: cover;
+  overflow: hidden;
+  padding: 0;
+}
+
+.saldo-a-receber {
+  color: #86efac;
+}
+
+.saldo-a-pagar {
+  color: #fca5a5;
+}
+
+.devedor-tipo.eu-devo {
+  background: rgba(249, 115, 22, 0.14);
+  color: #fdba74;
+}
+
+.devedores-importacao {
+  display: grid;
+  gap: 12px;
+}
+
+.devedores-importacao-titulo > div,
+.devedor-secao-titulo > div {
+  display: grid;
+  gap: 3px;
+}
+
+.devedores-importacao-titulo span,
+.devedor-secao-titulo span {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.devedores-importacao-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.devedor-import-btn {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.devedor-import-btn > span {
+  font-size: 24px;
+}
+
+.devedor-import-btn > div {
+  display: grid;
+  gap: 3px;
+}
+
+.devedor-import-btn small {
+  opacity: 0.68;
+  line-height: 1.3;
+}
+
+.devedor-voz-texto {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(59,130,246,.1);
+  font-size: 13px;
+}
+
+.devedor-leitura {
+  display: grid;
+  gap: 6px;
+}
+
+.devedor-leitura > div {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+}
+
+.devedor-leitura > div > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #3b82f6;
+}
+
+.devedor-rascunhos {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.devedor-rascunhos-topo,
+.devedor-rascunho,
+.devedor-rascunho-acoes,
+.devedor-secao-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.devedor-rascunho {
+  padding: 11px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 13px;
+  background: rgba(255,255,255,.025);
+}
+
+.devedor-rascunho > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.devedor-rascunho small,
+.devedor-rascunho span {
+  opacity: .7;
+}
+
+.devedor-rascunho-acoes > button,
+.devedor-rascunhos-topo > button {
+  width: auto;
+}
+
+.devedores-modal-card-grande {
+  width: min(760px, 100%);
+}
+
+.devedor-sentido-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.devedor-pessoas-selecao {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,.025);
+}
+
+.devedor-pessoas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 8px;
+}
+
+.devedor-pessoa-chip {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 36px minmax(0,1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 13px;
+  background: rgba(255,255,255,.025);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.devedor-pessoa-chip.ativo {
+  border-color: color-mix(in srgb, var(--chip-accent, #3b82f6) 65%, white 4%);
+  background: color-mix(in srgb, var(--chip-accent, #3b82f6) 17%, transparent);
+}
+
+.devedor-pessoa-chip img,
+.devedor-pessoa-chip > span {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.devedor-pessoa-chip > span {
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--chip-accent, #3b82f6) 22%, transparent);
+  font-weight: 900;
+}
+
+.devedor-pessoa-chip b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.devedor-pessoa-chip em {
+  font-style: normal;
+  font-weight: 900;
+}
+
+.devedor-percentuais-lista {
+  display: grid;
+  gap: 8px;
+}
+
+.devedor-percentual-item,
+.devedor-percentual-total {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 100px 120px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: rgba(255,255,255,.025);
+}
+
+.devedor-percentual-item label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px;
+  align-items: center;
+}
+
+.devedor-percentual-item input {
+  min-width: 0;
+}
+
+.devedor-percentual-item strong,
+.devedor-percentual-total strong {
+  text-align: right;
+}
+
+.devedor-percentual-total {
+  font-weight: 800;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.devedor-percentual-total.erro {
+  color: #fca5a5;
+  background: rgba(239,68,68,.08);
+}
+
+.devedor-criar-inline {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.devedor-criar-inline-grid {
+  display: grid;
+  grid-template-columns: minmax(160px,1fr) auto 54px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.devedor-criar-inline-grid > input[type="color"] {
+  height: 42px;
+  padding: 3px;
+}
+
+.devedor-upload-label {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: auto !important;
+  cursor: pointer;
+}
+
+.devedor-nova-foto-preview {
+  position: relative;
+  width: 64px;
+}
+
+.devedor-nova-foto-preview img {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.devedor-nova-foto-preview button {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: #ef4444;
+  color: white;
+  cursor: pointer;
+}
+
+.devedor-foto-editor {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.devedor-foto-editor img,
+.devedor-foto-vazia {
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+}
+
+.devedor-foto-editor img {
+  object-fit: cover;
+}
+
+.devedor-foto-vazia {
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.05);
+  font-size: 30px;
+}
+
+@media (max-width: 700px) {
+  .devedores-importacao-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .devedor-percentual-item,
+  .devedor-percentual-total {
+    grid-template-columns: minmax(0,1fr) 92px;
+  }
+
+  .devedor-percentual-item strong,
+  .devedor-percentual-total strong {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  .devedor-criar-inline-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .devedor-sentido-grid,
+  .devedor-criar-inline-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .devedor-rascunho,
+  .devedor-secao-titulo {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .devedor-rascunho-acoes {
+    justify-content: stretch;
+  }
+
+  .devedor-rascunho-acoes > button {
+    flex: 1;
+  }
+}
+
+/* =====================================================
+   MODAL DE LANÇAMENTO ORGANIZADO EM SEÇÕES
+===================================================== */
+
+.devedor-modal-intro {
+  margin: -4px 0 2px;
+}
+
+.devedor-lancamento-resumo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.devedor-lancamento-resumo > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.devedor-lancamento-resumo small {
+  opacity: 0.68;
+}
+
+.devedor-lancamento-resumo strong {
+  overflow-wrap: anywhere;
+}
+
+.devedor-accordion {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.devedor-accordion-trigger {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.devedor-accordion-trigger.aberto {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.devedor-accordion-trigger > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.devedor-accordion-trigger b {
+  font-size: 14px;
+}
+
+.devedor-accordion-trigger small {
+  opacity: 0.67;
+  font-size: 11px;
+}
+
+.devedor-accordion-trigger em {
+  font-style: normal;
+  opacity: 0.75;
+}
+
+.devedor-accordion-body {
+  display: grid;
+  gap: 12px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.devedor-grupos-area,
+.devedor-escolher-pessoas {
+  display: grid;
+  gap: 10px;
+}
+
+.devedor-grupos-area + .devedor-escolher-pessoas {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.devedor-grupos-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.devedor-grupo-chip {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid rgba(59, 130, 246, 0.24);
+  border-radius: 13px;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.devedor-grupo-chip > button:first-child {
+  display: grid;
+  gap: 2px;
+  padding: 9px 11px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.devedor-grupo-chip small {
+  opacity: 0.65;
+  font-size: 10px;
+}
+
+.devedor-grupo-apagar {
+  width: 32px;
+  border: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(239, 68, 68, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+
+.devedor-grupo-editor {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.13);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.devedor-grupo-pessoas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.devedor-detalhes-grid,
+.devedor-observacao-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.devedor-detalhes-grid label,
+.devedor-observacao-grid label {
+  min-width: 0;
+}
+
+.devedor-restante {
+  margin: 0;
+}
+
+.devedor-salvar-final {
+  min-height: 48px;
+  margin-top: 2px;
+}
+
+@media (max-width: 560px) {
+  .devedor-lancamento-resumo {
+    grid-template-columns: 1fr;
+  }
+
+  .devedor-detalhes-grid,
+  .devedor-observacao-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .devedor-secao-titulo {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .devedor-secao-titulo > button {
+    width: 100%;
+  }
+}
+
+
+/* =====================================================
+   CARTAS DE PESSOAS — VISUAL DE CARTA DE JOGO / REVEAL
+===================================================== */
+
+.devedores-lista {
+  perspective: 1200px;
+}
+
+.devedor-reveal-card {
+  isolation: isolate;
+  border-radius: 22px;
+  border: 1px solid color-mix(
+    in srgb,
+    var(--devedor-accent, #3b82f6) 48%,
+    rgba(255, 255, 255, 0.10)
+  );
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.055), transparent 32%),
+    radial-gradient(
+      circle at 82% 20%,
+      color-mix(in srgb, var(--devedor-accent, #3b82f6) 28%, transparent),
+      transparent 36%
+    ),
+    linear-gradient(150deg, #111827 0%, #0b1120 58%, #070b13 100%);
+  box-shadow:
+    0 18px 36px rgba(0,0,0,.28),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  transform-style: preserve-3d;
+  transition:
+    transform .32s cubic-bezier(.2,.75,.2,1),
+    box-shadow .32s ease,
+    border-color .32s ease;
+}
+
+.devedor-reveal-card::before {
+  inset: 0;
+  transform: none;
+  opacity: .9;
+  background:
+    linear-gradient(
+      110deg,
+      transparent 0 29%,
+      color-mix(in srgb, var(--devedor-accent, #3b82f6) 18%, transparent) 30% 34%,
+      transparent 35% 100%
+    );
+}
+
+.devedor-reveal-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, var(--devedor-accent, #3b82f6) 0 4px, transparent 4px),
+    linear-gradient(180deg, rgba(255,255,255,.05), transparent 22%);
+  opacity: .9;
+}
+
+@media (hover: hover) {
+  .devedor-reveal-card:not(.aberto):hover {
+    transform: translateY(-5px) rotateX(1.5deg) rotateY(-1.2deg);
+    box-shadow:
+      0 26px 48px rgba(0,0,0,.36),
+      0 0 26px color-mix(in srgb, var(--devedor-accent, #3b82f6) 18%, transparent);
+  }
+
+  .devedor-reveal-card:not(.aberto):hover .devedor-card-brilho {
+    transform: translateX(170%) skewX(-18deg);
+  }
+}
+
+.devedor-reveal-card.aberto {
+  transform: translateY(-2px);
+  border-color: color-mix(
+    in srgb,
+    var(--devedor-accent, #3b82f6) 72%,
+    white 8%
+  );
+  box-shadow:
+    0 28px 58px rgba(0,0,0,.38),
+    0 0 34px color-mix(in srgb, var(--devedor-accent, #3b82f6) 22%, transparent);
+}
+
+.devedor-reveal-frente {
+  min-height: 150px;
+  padding: 19px 18px 16px 20px;
+  overflow: hidden;
+  transform-style: preserve-3d;
+}
+
+.devedor-card-numero {
+  position: absolute;
+  top: 11px;
+  right: 14px;
+  z-index: 3;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .18em;
+  opacity: .45;
+}
+
+.devedor-card-brilho {
+  position: absolute;
+  z-index: 0;
+  top: -30%;
+  left: -38%;
+  width: 34%;
+  height: 165%;
+  pointer-events: none;
+  transform: translateX(0) skewX(-18deg);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,.13),
+    transparent
+  );
+  transition: transform .7s cubic-bezier(.2,.7,.2,1);
+}
+
+.devedor-identidade,
+.devedor-saldo-area,
+.devedor-mini-info,
+.devedor-progress {
+  position: relative;
+  z-index: 2;
+}
+
+.devedor-identidade {
+  align-items: center;
+  gap: 13px;
+}
+
+.devedor-avatar {
+  width: 68px;
+  height: 82px;
+  flex: 0 0 68px;
+  border-radius: 10px 18px 10px 18px;
+  font-size: 28px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--devedor-accent, #3b82f6) 36%, #111827),
+      #0f172a
+    );
+  border: 1px solid color-mix(
+    in srgb,
+    var(--devedor-accent, #3b82f6) 75%,
+    rgba(255,255,255,.2)
+  );
+  box-shadow:
+    0 9px 18px rgba(0,0,0,.25),
+    inset 0 1px 0 rgba(255,255,255,.10);
+}
+
+.devedor-identidade > div {
+  gap: 5px;
+}
+
+.devedor-identidade strong {
+  font-size: clamp(18px, 4vw, 24px);
+  line-height: 1.05;
+  letter-spacing: -.02em;
+  text-transform: uppercase;
+}
+
+.devedor-categoria-carta {
+  width: max-content;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .15em;
+  opacity: .48;
+}
+
+.devedor-status-chip {
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--devedor-accent, #3b82f6) 18%,
+    rgba(255,255,255,.035)
+  );
+  border: 1px solid color-mix(
+    in srgb,
+    var(--devedor-accent, #3b82f6) 32%,
+    rgba(255,255,255,.07)
+  );
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .03em;
+  opacity: .9;
+}
+
+.devedor-saldo-area {
+  min-width: 112px;
+  align-self: center;
+}
+
+.devedor-saldo-area small {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  opacity: .55;
+}
+
+.devedor-saldo-area b {
+  margin-top: 3px;
+  font-size: clamp(17px, 4vw, 22px);
+}
+
+.saldo-zero-carta {
+  color: #e5e7eb;
+}
+
+.devedor-mini-info {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.075);
+  align-items: center;
+  opacity: .74;
+}
+
+.devedor-abrir-indicador {
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .09em;
+  color: color-mix(
+    in srgb,
+    var(--devedor-accent, #3b82f6) 72%,
+    white 18%
+  );
+}
+
+.devedor-progress {
+  height: 4px;
+  margin-top: -2px;
+  background: rgba(255,255,255,.065);
+}
+
+.devedor-progress > div {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--devedor-accent, #3b82f6) 86%, white 4%),
+    color-mix(in srgb, var(--devedor-accent, #3b82f6) 50%, white 25%)
+  );
+  box-shadow: 0 0 12px color-mix(
+    in srgb,
+    var(--devedor-accent, #3b82f6) 45%,
+    transparent
+  );
+}
+
+.devedor-reveal-conteudo {
+  position: relative;
+  z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.018), transparent),
+    rgba(5, 9, 17, .40);
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+
+.devedor-reveal-card.aberto .devedor-reveal-conteudo {
+  animation: devedorReveal .36s ease both;
+}
+
+@keyframes devedorReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 520px) {
+  .devedor-reveal-frente {
+    min-height: 142px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 17px 14px 14px 16px;
+    gap: 10px;
+  }
+
+  .devedor-avatar {
+    width: 58px;
+    height: 72px;
+    flex-basis: 58px;
+  }
+
+  .devedor-identidade strong {
+    font-size: 18px;
+  }
+
+  .devedor-saldo-area {
+    min-width: 88px;
+  }
+
+  .devedor-saldo-area b {
+    font-size: 16px;
+  }
+
+  .devedor-mini-info {
+    font-size: 10px;
+  }
+}
+/* Carrossel de cartas: abertura estilo caixa, em tons de azul. */
+.devedores-carrossel-viewport {
+  position: relative;
+  margin: 0 -16px;
+  overflow: hidden;
+}
+
+.devedores-carrossel-viewport::before,
+.devedores-carrossel-viewport::after {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  width: 36px;
+  pointer-events: none;
+  content: "";
+}
+
+.devedores-carrossel-viewport::before {
+  left: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.8), transparent);
+}
+
+.devedores-carrossel-viewport::after {
+  right: 0;
+  background: linear-gradient(270deg, rgba(0, 0, 0, 0.8), transparent);
+}
+
+.devedores-lista.devedores-carrossel {
+  display: flex;
+  gap: 14px;
+  padding: 14px calc(50% - 142px) 28px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.devedores-lista.devedores-carrossel::-webkit-scrollbar {
+  display: none;
+}
+
+.devedores-carrossel .devedor-reveal-card {
+  flex: 0 0 min(284px, 76vw);
+  scroll-snap-align: center;
+  transform: scale(0.93);
+  opacity: 0.58;
+  filter: saturate(0.65);
+  transition: transform 0.4s ease, opacity 0.4s ease, filter 0.4s ease, box-shadow 0.4s ease;
+}
+
+.devedores-carrossel .devedor-reveal-card.aberto,
+.devedores-carrossel .devedor-reveal-card.devedor-carta-revelando {
+  z-index: 1;
+  transform: scale(1);
+  opacity: 1;
+  filter: saturate(1);
+}
+
+.devedores-carrossel .devedor-reveal-card.devedor-carta-revelando {
+  animation: devedor-caixa-revelar 1.1s cubic-bezier(.12, .72, .18, 1);
+}
+
+.devedores-carrossel .devedor-reveal-card.devedor-carta-revelando .devedor-reveal-frente {
+  box-shadow: 0 0 0 2px rgba(96, 190, 255, 0.9), 0 0 30px rgba(44, 145, 255, 0.65);
+}
+
+@keyframes devedor-caixa-revelar {
+  0% { transform: scale(0.93) translateX(55px); opacity: 0.58; }
+  42% { transform: scale(1.04) translateX(0); opacity: 1; }
+  100% { transform: scale(1) translateX(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .devedores-lista.devedores-carrossel { scroll-behavior: auto; }
+  .devedores-carrossel .devedor-reveal-card.devedor-carta-revelando { animation: none; }
+}
+
+/* =====================================================
+   CARTAS NA LARGURA NORMAL DO APLICATIVO
+   A animação continua, mas sem apertar conteúdos importantes.
+===================================================== */
+
+.devedores-carrossel-viewport {
+  margin: 0;
+  overflow: visible;
+}
+
+.devedores-carrossel-viewport::before,
+.devedores-carrossel-viewport::after {
+  display: none;
+}
+
+.devedores-lista.devedores-carrossel {
+  display: grid;
+  gap: 14px;
+  padding: 0;
+  overflow: visible;
+  scroll-snap-type: none;
+}
+
+.devedores-carrossel .devedor-reveal-card {
+  width: 100%;
+  flex: none;
+  transform: none;
+  opacity: 1;
+  filter: none;
+  scroll-snap-align: none;
+}
+
+.devedores-carrossel .devedor-reveal-card.aberto,
+.devedores-carrossel .devedor-reveal-card.devedor-carta-revelando {
+  transform: none;
+}
+
+/* O brilho dá a sensação de revelar a carta, sem mudar seu tamanho. */
+.devedores-carrossel .devedor-reveal-card.devedor-carta-revelando {
+  animation: devedor-revelar-largo 650ms ease-out;
+}
+
+.devedores-carrossel .devedor-reveal-card.devedor-carta-revelando .devedor-reveal-frente {
+  box-shadow: inset 0 0 0 2px rgba(96, 190, 255, 0.78), 0 0 28px rgba(44, 145, 255, 0.46);
+}
+
+@keyframes devedor-revelar-largo {
+  0% { opacity: 0.76; transform: translateY(8px); }
+  55% { opacity: 1; transform: translateY(-3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Os quatro dados ficam bem legíveis, inclusive no celular. */
+.devedor-status-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 420px) {
+  .devedor-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* =========================================================
+   MODAL — GERAR PDF / QUEM ME DEVE
+   Cole no final de src/pages/QuemMeDeve/QuemMeDevePage.css
+   ========================================================= */
+
+   .devedor-pdf-modal {
+    width: min(94vw, 560px);
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 22px;
+    border-radius: 22px;
+    box-sizing: border-box;
+  }
+  
+  .devedor-pdf-cabecalho {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    padding-right: 34px;
+    margin-bottom: 18px;
+  }
+  
+  .devedor-pdf-icone {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 15px;
+    background: rgba(59, 130, 246, 0.14);
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    font-size: 22px;
+  }
+  
+  .devedor-pdf-cabecalho h3 {
+    margin: 0;
+    font-size: 19px;
+    line-height: 1.25;
+  }
+  
+  .devedor-pdf-cabecalho p {
+    margin: 5px 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    opacity: 0.72;
+  }
+  
+  .devedor-pdf-opcoes {
+    display: grid;
+    gap: 9px;
+  }
+  
+  .devedor-pdf-opcao {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 14px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.035);
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+  
+  .devedor-pdf-opcao:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  
+  .devedor-pdf-opcao > span {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+  }
+  
+  .devedor-pdf-opcao strong {
+    font-size: 14px;
+    line-height: 1.3;
+  }
+  
+  .devedor-pdf-opcao small {
+    font-size: 11.5px;
+    line-height: 1.4;
+    opacity: 0.65;
+  }
+  
+  .devedor-pdf-opcao input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    flex: 0 0 auto;
+    accent-color: #3b82f6;
+    cursor: pointer;
+  }
+  
+  .devedor-pdf-acoes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  
+  .devedor-pdf-acoes button {
+    width: 100%;
+    min-height: 46px;
+    margin: 0;
+    border-radius: 14px;
+  }
+  
+  .devedor-pdf-compartilhar:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+  }
+  
+  .devedor-pdf-status {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  
+  .devedor-pdf-status > span {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 900;
+    background: rgba(59, 130, 246, 0.14);
+  }
+  
+  .devedor-pdf-status p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    opacity: 0.72;
+  }
+  
+  .devedor-pdf-status.pronto {
+    background: rgba(34, 197, 94, 0.07);
+    border-color: rgba(34, 197, 94, 0.2);
+  }
+  
+  .devedor-pdf-status.pronto > span {
+    background: rgba(34, 197, 94, 0.16);
+  }
+  
+  @media (max-width: 520px) {
+    .devedor-pdf-modal {
+      width: calc(100vw - 24px);
+      padding: 18px 14px;
+      border-radius: 18px;
+    }
+  
+    .devedor-pdf-cabecalho {
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 10px;
+      padding-right: 28px;
+    }
+  
+    .devedor-pdf-icone {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+    }
+  
+    .devedor-pdf-opcao {
+      padding: 12px;
+      gap: 10px;
+    }
+  
+    .devedor-pdf-acoes {
+      grid-template-columns: 1fr;
+    }
+  }
+  .devedores-flash {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 99999;
+    width: min(360px, calc(100vw - 32px));
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    box-sizing: border-box;
+    background: rgba(18, 30, 52, 0.96);
+    border: 1px solid rgba(173, 216, 255, 0.20);
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.28);
+    animation: devedoresFlashEntrar .18s ease-out;
+  }
+  .devedores-flash-icone {
+    width: 32px; height: 32px; display: grid; place-items: center;
+    border-radius: 50%; font-weight: 900;
+    background: rgba(59,130,246,.18);
+  }
+  .devedores-flash-success .devedores-flash-icone { background: rgba(34,197,94,.20); }
+  .devedores-flash-error .devedores-flash-icone { background: rgba(239,68,68,.20); }
+  @keyframes devedoresFlashEntrar {
+    from { opacity: 0; transform: translateX(18px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @media (max-width: 520px) {
+    .devedores-flash { top: 12px; right: 12px; width: calc(100vw - 24px); }
+  }
+  /* =====================================================
+   PAINEL DE SALDO REAL + GRÁFICOS
+===================================================== */
+
+.devedores-resumo {
+  margin: 16px 0 20px;
+  padding: 16px;
+  border: 1px solid rgba(118, 190, 255, 0.22);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top right, rgba(52, 140, 255, 0.16), transparent 45%),
+    linear-gradient(145deg, rgba(12, 31, 61, 0.96), rgba(7, 19, 40, 0.98));
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.devedores-resumo > div:first-child > div {
+  min-height: 108px;
+  padding: 14px;
+  border: 1px solid rgba(160, 220, 255, 0.13);
+  border-radius: 15px;
+  background: rgba(3, 14, 33, 0.5);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.devedores-resumo > div:first-child > div:hover {
+  transform: translateY(-2px);
+  border-color: rgba(112, 204, 255, 0.42);
+}
+
+.devedores-resumo small {
+  display: block;
+  margin-bottom: 6px;
+  color: #9bb4ce;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.devedores-resumo strong {
+  display: block;
+  color: #f4f8ff;
+  font-size: clamp(18px, 3.2vw, 25px);
+  line-height: 1.15;
+}
+
+.devedores-resumo .muted.small {
+  margin-top: 7px;
+  color: #8fa6bd;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* Bloco do gráfico receber × pagar */
+.devedores-resumo > div:nth-child(2) {
+  padding: 14px;
+  border: 1px solid rgba(160, 220, 255, 0.13);
+  border-radius: 15px;
+  background: rgba(3, 14, 33, 0.42);
+}
+
+.devedores-resumo > div:nth-child(2) > div:first-child strong,
+.devedores-resumo > div:nth-child(3) > strong {
+  color: #dcecff;
+  font-size: 14px;
+}
+
+.devedores-resumo > div:nth-child(2) > div:last-child {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+/* Gráfico das maiores pendências */
+.devedores-resumo > div:nth-child(3) {
+  padding: 14px;
+  border: 1px solid rgba(160, 220, 255, 0.13);
+  border-radius: 15px;
+  background: rgba(3, 14, 33, 0.34);
+}
+
+.devedores-resumo > div:nth-child(3) > div {
+  padding-top: 5px;
+}
+
+.devedores-resumo > div:nth-child(3) .small {
+  color: #c9d8e8;
+}
+
+.devedores-resumo > div:nth-child(3) .small strong {
+  font-size: 13px;
+}
+
+/* Campos de juros no formulário */
+.devedor-detalhes-grid label:has(input[placeholder="Ex.: 2"]),
+.devedor-detalhes-grid label:has(select) {
+  position: relative;
+}
+
+.devedor-detalhes-grid label:has(input[placeholder="Ex.: 2"]) input,
+.devedor-detalhes-grid label:has(select) select {
+  border-color: rgba(123, 204, 255, 0.28);
+  background: rgba(10, 29, 58, 0.85);
+}
+
+@media (max-width: 520px) {
+  .devedores-resumo {
+    padding: 12px;
+    border-radius: 17px;
+  }
+
+  .devedores-resumo > div:first-child > div {
+    min-height: 96px;
+    padding: 12px;
+  }
+
+  .devedores-resumo strong {
+    font-size: 20px;
+  }
+
+  .devedores-resumo > div:nth-child(2),
+  .devedores-resumo > div:nth-child(3) {
+    padding: 12px;
+  }
+}

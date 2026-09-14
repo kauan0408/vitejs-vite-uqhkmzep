@@ -1,0 +1,72 @@
+.backup-page {
+  display: grid;
+  gap: 16px;
+}
+
+.backup-subtitulo {
+  margin: 4px 0 0;
+  opacity: 0.7;
+}
+
+.backup-card {
+  padding: 18px;
+  border: 1px solid
+    rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.backup-card h3 {
+  margin-top: 0;
+}
+
+.backup-card p {
+  opacity: 0.78;
+}
+
+.backup-botao,
+.backup-botao-secundario {
+  padding: 10px 14px;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.backup-botao {
+  color: white;
+  border: none;
+  background: #5668d8;
+}
+
+.backup-botao-secundario {
+  border: 1px solid
+    rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.backup-arquivo {
+  display: none;
+}
+
+.backup-mensagem {
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.backup-sucesso {
+  border: 1px solid
+    rgba(80, 220, 140, 0.3);
+  background: rgba(80, 220, 140, 0.12);
+}
+
+.backup-erro {
+  border: 1px solid
+    rgba(255, 90, 90, 0.35);
+  background: rgba(255, 70, 70, 0.13);
+}
+
+.backup-aviso {
+  border-color: rgba(255, 190, 70, 0.3);
+}

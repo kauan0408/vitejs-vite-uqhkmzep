@@ -1,0 +1,1738 @@
+/* =============================================================
+   REGRAS GERAIS USADAS SOMENTE NA PÁGINA DE FINANÇAS
+   Vieram do antigo global.css.
+   ============================================================= */
+
+   .page { width: 100%; }
+
+   .page-title {
+     position: relative;
+     display: inline-block;
+     margin: 0 0 12px;
+     padding-bottom: 4px;
+     color: var(--accent);
+     font-size: 1.25rem;
+   }
+   
+   .page-title::after {
+     position: absolute;
+     bottom: 0;
+     left: 0;
+     width: 30%;
+     max-width: 90px;
+     height: 2px;
+     border-radius: 999px;
+     background: linear-gradient(90deg, var(--accent), transparent);
+     content: "";
+   }
+   
+   .card {
+     position: relative;
+     overflow: hidden;
+     padding: 14px 16px;
+     border: 1px solid var(--border);
+     border-radius: var(--radius);
+     background: var(--surface);
+     box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+   }
+   
+   .card h3 { margin-top: 0; margin-bottom: 8px; font-size: 1rem; }
+   .muted { color: var(--text-soft); }
+   .small { font-size: 0.8rem; }
+   .positive { color: var(--positive); }
+   .negative { color: var(--negative); }
+   
+   .grid-2 {
+     display: grid;
+     grid-template-columns: repeat(2, minmax(0, 1fr));
+     gap: 12px;
+   }
+   
+   .mt { margin-top: 16px; }
+   
+   .list { margin: 0; padding: 0; list-style: none; }
+   
+   .list-item {
+     display: flex;
+     align-items: flex-start;
+     justify-content: space-between;
+     padding: 10px 0;
+     border-bottom: 1px solid rgba(173, 216, 255, 0.1);
+   }
+   
+   .list-item:last-child { border-bottom: 0; }
+   
+   .primary-btn {
+     width: 100%;
+     min-height: var(--btn-h);
+     margin-top: 4px;
+     padding: 0 var(--btn-pad-x);
+     border: 0;
+     border-radius: var(--radius-pill);
+     background: radial-gradient(circle at 30% 0, var(--accent), var(--accent-strong));
+     color: #041023;
+     font-weight: 700;
+     cursor: pointer;
+     transition: transform 0.14s ease-out, filter 0.18s ease-out;
+   }
+   
+   .primary-btn:hover { filter: brightness(1.04); transform: translateY(-1px); }
+   .primary-btn:active { transform: scale(0.98); }
+   
+   .toggle-btn {
+     flex: 1;
+     min-height: var(--btn-h);
+     padding: 0 var(--btn-pad-x);
+     border: 1px solid rgba(173, 216, 255, 0.18);
+     border-radius: var(--radius-pill);
+     background: rgba(9, 18, 38, 0.55);
+     color: var(--text-soft);
+     cursor: pointer;
+   }
+   
+   .toggle-active {
+     border-color: rgba(173, 216, 255, 0.55);
+     background: rgba(173, 216, 255, 0.22);
+     color: var(--accent);
+   }
+   
+   .pizza-chart-wrapper { display: flex; justify-content: center; margin: 8px 0; }
+   
+   .pizza-chart {
+     width: 120px;
+     height: 120px;
+     border: 6px solid rgba(15, 23, 42, 0.9);
+     border-radius: 50%;
+     box-shadow: 0 0 20px rgba(15, 23, 42, 0.9);
+   }
+   
+   .legend { margin-top: 6px; }
+   
+   .legend-item {
+     display: flex;
+     align-items: center;
+     gap: 6px;
+     color: var(--text-soft);
+     font-size: 0.8rem;
+   }
+   
+   .legend-color { width: 12px; height: 12px; border-radius: 4px; }
+   .legend-essential { background: #707fbe; }
+   .legend-leisure { background: #020d70; }
+   
+   .progress-label { margin-top: 4px; color: var(--text-soft); font-size: 0.8rem; }
+   
+   .resumo-grid {
+     display: grid;
+     grid-template-columns: repeat(2, minmax(0, 1fr));
+     gap: 10px;
+     margin-top: 4px;
+   }
+   
+   .resumo-label { color: var(--text-soft); font-size: 0.75rem; }
+   .resumo-number { font-size: 0.95rem; font-weight: 600; }
+   
+   .modal-overlay {
+     position: fixed;
+     z-index: 9999;
+     inset: 0;
+     display: flex;
+     align-items: flex-start;
+     justify-content: center;
+     padding: 72px 16px 16px;
+     overflow-y: auto;
+     background: rgba(0, 0, 0, 0.65);
+     backdrop-filter: blur(6px);
+   }
+   
+   .modal-card {
+     width: min(420px, 100%);
+     max-height: calc(100vh - 120px);
+     padding: 16px;
+     overflow-y: auto;
+     border: 1px solid rgba(173, 216, 255, 0.18);
+     border-radius: 14px;
+     background: rgba(9, 18, 38, 0.92);
+     box-shadow: 0 18px 40px rgba(0, 0, 0, 0.75);
+   }
+   
+   /* =============================================================
+      ESTILOS ORIGINAIS DA PÁGINA
+      ============================================================= */
+   
+   .financas-page {
+     display: grid;
+     gap: 12px;
+   }
+   
+   /* Cards próprios da página */
+   .financas-card {
+     padding: 16px;
+     border: 1px solid rgba(255, 255, 255, 0.09);
+     border-radius: 16px;
+     background: rgba(255, 255, 255, 0.04);
+   }
+   
+   .financas-card h3 {
+     margin-top: 0;
+   }
+   
+   /* Navegação mensal */
+   .financas-month-navigation {
+     text-align: center;
+   }
+   
+   .financas-month-buttons {
+     display: flex;
+     justify-content: space-between;
+     gap: 10px;
+     margin-top: 12px;
+   }
+   
+   /* Resumos */
+   .financas-balance-card {
+     display: flex;
+     justify-content: flex-end;
+   }
+   
+   .financas-summary-grid {
+     display: grid;
+     grid-template-columns: repeat(4, minmax(0, 1fr));
+     gap: 12px;
+   }
+   
+   .financas-summary-item {
+     min-width: 0;
+   }
+   
+   .financas-card-heading,
+   .financas-gastos-titulo,
+   .financas-gasto-info,
+   .financas-semanas-topo,
+   .financas-semana-cabecalho {
+     display: flex;
+     justify-content: space-between;
+     gap: 12px;
+   }
+   
+   .financas-card-heading,
+   .financas-semanas-topo,
+   .financas-semana-cabecalho {
+     align-items: center;
+   }
+   
+   .financas-gastos-titulo,
+   .financas-gasto-info {
+     align-items: flex-start;
+   }
+   
+   .financas-two-columns {
+     display: grid;
+     grid-template-columns: repeat(2, minmax(0, 1fr));
+     gap: 12px;
+   }
+   
+   /* Limite e gastos fixos */
+   .financas-limite-card {
+     overflow: visible;
+   }
+   
+   .financas-limite-cabecalho {
+     width: 100%;
+     display: flex;
+     align-items: flex-start;
+     justify-content: space-between;
+     gap: 12px;
+     padding: 0;
+     color: inherit;
+     text-align: left;
+     border: 0;
+     background: transparent;
+     cursor: pointer;
+   }
+   
+   .financas-limite-cabecalho h3 {
+     margin: 0 0 5px;
+   }
+   
+   .financas-limite-cabecalho p,
+   .financas-gastos-titulo h3,
+   .financas-gastos-titulo p,
+   .financas-semanas-topo h3,
+   .financas-semanas-topo p {
+     margin: 0;
+   }
+   
+   .financas-semanas-topo > div {
+     display: grid;
+     gap: 3px;
+   }
+   
+   .financas-expandir-icone {
+     flex-shrink: 0;
+     color: var(--accent);
+     font-size: 14px;
+   }
+   
+   .financas-total-fixos {
+     margin-top: 8px !important;
+     color: var(--text);
+     font-size: 0.9rem;
+   }
+   
+   .financas-total-fixos strong {
+     color: var(--accent);
+   }
+   
+   .financas-clique-editar {
+     margin-top: 4px !important;
+   }
+   
+   .financas-gastos-fixos-area {
+     display: grid;
+     gap: 14px;
+     margin-top: 18px;
+     padding-top: 16px;
+     border-top: 1px solid rgba(148, 163, 184, 0.16);
+   }
+   
+   .financas-gasto-form {
+     display: grid;
+     grid-template-columns:
+       minmax(0, 2fr)
+       minmax(100px, 1fr)
+       minmax(72px, 0.7fr)
+       minmax(120px, 1fr)
+       auto;
+     align-items: center;
+     gap: 8px;
+   }
+   
+   .financas-gasto-form .primary-btn,
+   .financas-gasto-edicao .primary-btn {
+     width: auto;
+     margin: 0;
+   }
+   
+   .financas-gastos-lista {
+     display: grid;
+     gap: 10px;
+   }
+   
+   .financas-gasto-item {
+     padding: 12px;
+     border: 1px solid rgba(148, 163, 184, 0.16);
+     border-radius: 12px;
+     background: rgba(15, 23, 42, 0.45);
+   }
+   
+   .financas-gasto-inativo {
+     opacity: 0.5;
+   }
+   
+   .financas-gasto-info span {
+     display: block;
+     margin-top: 3px;
+   }
+   
+   .financas-gasto-acoes,
+   .financas-gasto-edicao {
+     display: flex;
+     flex-wrap: wrap;
+     gap: 8px;
+     margin-top: 10px;
+   }
+   
+   .financas-gasto-acoes .toggle-btn {
+     flex: initial;
+   }
+   
+   .financas-gasto-edicao input {
+     flex: 1;
+     min-width: 110px;
+   }
+   
+   .financas-gasto-edicao input[type="number"]:nth-child(2) {
+     max-width: 90px;
+   }
+   
+   .financas-gasto-remover {
+     padding: 8px 12px;
+     border: 1px solid rgba(249, 115, 115, 0.4);
+     border-radius: 999px;
+     background: rgba(249, 115, 115, 0.1);
+     color: #fca5a5;
+     cursor: pointer;
+   }
+   
+   .financas-gastos-vazio {
+     text-align: center;
+   }
+   
+   /* Gastos por semana */
+   .financas-semanas-card {
+     overflow: hidden;
+     border: 1px solid rgba(143, 163, 255, 0.2);
+     background: linear-gradient(180deg, rgba(143, 163, 255, 0.05), rgba(255, 255, 255, 0.02));
+   }
+   
+   .financas-semanas-topo {
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 12px;
+   }
+   
+   .financas-semanas-topo h3 { margin: 0; }
+   
+   .financas-ver-semanas-btn {
+     padding: 8px 13px;
+     border: 1px solid rgba(143, 163, 255, 0.45);
+     border-radius: 999px;
+     background: rgba(143, 163, 255, 0.12);
+     color: var(--accent);
+     font: inherit;
+     font-size: 0.8rem;
+     font-weight: 800;
+     cursor: pointer;
+   }
+   
+   .financas-ver-semanas-btn:hover { background: rgba(143, 163, 255, 0.2); }
+   
+   .financas-escolha-meses {
+     position: relative;
+   }
+   
+   .financas-meses-analisados {
+     padding: 8px 11px;
+     border: 1px solid rgba(143, 163, 255, 0.45);
+     border-radius: 10px;
+     background: rgba(143, 163, 255, 0.12);
+     color: var(--accent);
+     font: inherit;
+     font-size: 0.82rem;
+     font-weight: 800;
+     cursor: pointer;
+   }
+   
+   .financas-opcoes-meses {
+     position: absolute;
+     z-index: 5;
+     top: calc(100% + 7px);
+     right: 0;
+     display: grid;
+     grid-template-columns: repeat(3, 1fr);
+     gap: 6px;
+     width: 190px;
+     padding: 8px;
+     border: 1px solid rgba(143, 163, 255, 0.35);
+     border-radius: 12px;
+     background: #20202c;
+     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+   }
+   
+   .financas-opcoes-meses button {
+     padding: 7px 4px;
+     border: 1px solid rgba(148, 163, 184, 0.2);
+     border-radius: 8px;
+     background: rgba(255, 255, 255, 0.04);
+     color: inherit;
+     font: inherit;
+     font-size: 0.75rem;
+     cursor: pointer;
+   }
+   
+   .financas-opcoes-meses button:hover,
+   .financas-opcoes-meses button.ativo {
+     border-color: rgba(143, 163, 255, 0.7);
+     background: rgba(143, 163, 255, 0.18);
+     color: var(--accent);
+   }
+   
+   .weeks-grid {
+     display: grid;
+     grid-template-columns: repeat(2, minmax(0, 1fr));
+     gap: 10px;
+     margin-top: 14px;
+   }
+   
+   .week-cell {
+     min-width: 0;
+     min-height: 92px;
+     display: grid;
+     align-content: center;
+     gap: 8px;
+     padding: 14px;
+     border: 1px solid rgba(148, 163, 184, 0.15);
+     border-radius: 14px;
+     background: rgba(255, 255, 255, 0.035);
+     color: inherit;
+     font: inherit;
+     text-align: left;
+     cursor: pointer;
+   }
+   
+   .week-cell:hover {
+     border-color: rgba(143, 163, 255, 0.4);
+     background: rgba(143, 163, 255, 0.07);
+   }
+   
+   .week-cell-atual {
+     border-color: rgba(143, 163, 255, 0.65);
+     background: rgba(143, 163, 255, 0.12);
+   }
+   
+   .financas-semana-data {
+     color: var(--text-soft);
+     font-size: 0.82rem;
+   }
+   
+   .week-value {
+     color: var(--text);
+     font-size: 1.08rem;
+     font-weight: 800;
+   }
+   
+   .week-cell-atual .week-value { color: var(--accent); }
+   
+   .financas-semana-detalhes-aberto {
+     display: grid;
+     gap: 12px;
+     margin-top: 12px;
+     padding: 14px;
+     border: 1px solid rgba(143, 163, 255, 0.2);
+     border-radius: 14px;
+     background: rgba(0, 0, 0, 0.12);
+   }
+   
+   .financas-semana-detalhes-topo {
+     display: flex;
+     justify-content: space-between;
+     gap: 12px;
+     padding-bottom: 10px;
+     border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+   }
+   
+   .financas-categoria-semana { display: grid; gap: 5px; }
+   
+   .financas-categoria-semana-linha {
+     display: flex;
+     justify-content: space-between;
+     gap: 10px;
+     font-size: 0.82rem;
+   }
+   
+   .financas-categoria-barra {
+     width: 100%;
+     height: 7px;
+     overflow: hidden;
+     border-radius: 999px;
+     background: rgba(255, 255, 255, 0.07);
+   }
+   
+   .financas-categoria-preenchimento { height: 100%; border-radius: inherit; }
+   .financas-categoria-essencial { background: #8fa3ff; }
+   .financas-categoria-lazer { background: #4c5acf; }
+   .financas-categoria-burrice { background: #f59e0b; }
+   .financas-categoria-investido { background: #10b981; }
+   
+   .financas-compras-semana-botao {
+     width: 100%;
+     padding: 10px 12px;
+     border: 1px solid rgba(143, 163, 255, 0.45);
+     border-radius: 10px;
+     background: rgba(143, 163, 255, 0.11);
+     color: var(--accent);
+     font: inherit;
+     font-weight: 800;
+     cursor: pointer;
+   }
+   
+   .financas-compras-semana-botao:hover { background: rgba(143, 163, 255, 0.2); }
+   
+   .financas-compras-semana {
+     display: grid;
+     gap: 9px;
+     padding-top: 3px;
+   }
+   
+   .financas-compras-semana-lista {
+     display: grid;
+     gap: 7px;
+     max-height: 280px;
+     margin: 0;
+     padding: 0;
+     overflow-y: auto;
+     list-style: none;
+   }
+   
+   .financas-compra-semana-item {
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 12px;
+     padding: 10px;
+     border: 1px solid rgba(148, 163, 184, 0.12);
+     border-radius: 10px;
+     background: rgba(255, 255, 255, 0.025);
+   }
+   
+   .financas-compra-semana-item > div {
+     display: grid;
+     min-width: 0;
+     gap: 3px;
+   }
+   
+   .financas-compra-semana-item span {
+     color: var(--text-soft);
+     font-size: 0.76rem;
+   }
+   
+   .financas-compra-semana-item > strong {
+     flex: 0 0 auto;
+     color: var(--accent);
+   }
+   
+   .financas-modal-compras {
+     width: min(92vw, 560px);
+   }
+   
+   .financas-modal-compras-topo {
+     display: flex;
+     align-items: flex-start;
+     justify-content: space-between;
+     gap: 12px;
+     margin-bottom: 14px;
+   }
+   
+   .financas-modal-compras-topo h3,
+   .financas-modal-compras-topo p { margin: 0; }
+   
+   .financas-fechar-modal {
+     width: 32px;
+     height: 32px;
+     border: 0;
+     border-radius: 50%;
+     background: rgba(255, 255, 255, 0.1);
+     color: inherit;
+     font-size: 1.4rem;
+     cursor: pointer;
+   }
+   
+   .financas-semanas-scroll {
+     max-height: 430px;
+     display: grid;
+     gap: 8px;
+     margin-top: 14px;
+     padding: 8px;
+     overflow-y: auto;
+     scroll-behavior: smooth;
+     border: 1px solid rgba(148, 163, 184, 0.12);
+     border-radius: 14px;
+     background: rgba(0, 0, 0, 0.1);
+   }
+   
+   .financas-semanas-scroll::-webkit-scrollbar { width: 7px; }
+   .financas-semanas-scroll::-webkit-scrollbar-thumb {
+     border-radius: 999px;
+     background: rgba(143, 163, 255, 0.4);
+   }
+   
+   .financas-semana-scroll-item {
+     border: 1px solid rgba(148, 163, 184, 0.12);
+     border-radius: 12px;
+     background: rgba(255, 255, 255, 0.025);
+   }
+   
+   .financas-semana-scroll-principal {
+     border-color: rgba(143, 163, 255, 0.7);
+     background: rgba(143, 163, 255, 0.13);
+   }
+   
+   .financas-semana-scroll-botao {
+     width: 100%;
+     min-height: 58px;
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 12px;
+     padding: 11px 13px;
+     border: 0;
+     background: transparent;
+     color: inherit;
+     font: inherit;
+     text-align: left;
+     cursor: pointer;
+   }
+   
+   .financas-semana-scroll-botao strong { color: var(--accent); }
+   
+   /* Responsividade */
+   @media (max-width: 850px) {
+     .financas-summary-grid {
+       grid-template-columns: repeat(2, minmax(0, 1fr));
+     }
+   
+     .financas-two-columns {
+       grid-template-columns: 1fr;
+     }
+   }
+   
+   @media (max-width: 650px) {
+     .financas-gasto-form {
+       grid-template-columns: 1fr;
+     }
+   
+     .financas-gasto-form .primary-btn {
+       width: 100%;
+     }
+   
+     .financas-gasto-info,
+     .financas-gasto-acoes,
+     .financas-gasto-edicao {
+       flex-direction: column;
+     }
+   
+     .financas-gasto-acoes button,
+     .financas-gasto-edicao button {
+       width: 100%;
+     }
+   }
+   
+   @media (max-width: 560px) {
+     .financas-month-buttons,
+   
+     .financas-summary-grid {
+       grid-template-columns: 1fr;
+     }
+   
+     .financas-balance-card {
+       justify-content: center;
+     }
+   
+     .financas-gasto-edicao input[type="number"]:nth-child(2) {
+       max-width: none;
+     }
+   }
+   
+   @media (max-width: 560px) {
+   }
+   
+   @media (max-width: 900px) {
+   }
+   
+   @media (max-width: 560px) {
+     .financas-semanas-topo {
+       align-items: flex-start;
+     }
+   
+     .financas-semanas-navegacao {
+       grid-template-columns: 1fr;
+     }
+   
+     .financas-semana-resumo {
+       min-height: 78px;
+       padding: 10px;
+     }
+   }
+   
+   @media (max-width: 560px) {
+     .weeks-grid {
+       grid-template-columns: repeat(2, minmax(0, 1fr));
+       gap: 8px;
+     }
+     .week-cell { min-height: 82px; padding: 10px; }
+     .financas-semana-data { font-size: 0.73rem; }
+     .week-value { font-size: 0.94rem; }
+     .financas-semanas-scroll { max-height: 360px; }
+     .financas-semana-detalhes-topo { flex-direction: column; }
+   }
+   /* ========================================
+      LIMITE + MÍNIMO PARA PAGAR CONTAS
+   ======================================== */
+   
+   .financas-minimo-card {
+     display: grid;
+     gap: 14px;
+   }
+   
+   .financas-minimo-topo,
+   .financas-minimo-cabecalho {
+     display: flex;
+     align-items: flex-start;
+     justify-content: space-between;
+     gap: 14px;
+   }
+   
+   .financas-minimo-topo h3,
+   .financas-minimo-cabecalho h3 {
+     margin: 0 0 5px;
+   }
+   
+   .financas-minimo-cabecalho p {
+     margin: 0;
+   }
+   
+   .financas-limite-destaque {
+     display: block;
+     color: var(--accent);
+     font-size: 1.25rem;
+   }
+   
+   .financas-editar-limite-btn {
+     flex-shrink: 0;
+     padding: 8px 13px;
+     border: 1px solid
+       rgba(143, 163, 255, 0.45);
+     border-radius: 999px;
+     background:
+       rgba(143, 163, 255, 0.12);
+     color: var(--accent);
+     font: inherit;
+     font-size: 0.8rem;
+     font-weight: 800;
+     cursor: pointer;
+   }
+   
+   .financas-editar-limite-btn:hover {
+     background:
+       rgba(143, 163, 255, 0.2);
+   }
+   
+   .financas-editor-limite {
+     display: grid;
+     gap: 12px;
+     padding: 14px;
+     border: 1px solid
+       rgba(143, 163, 255, 0.2);
+     border-radius: 13px;
+     background:
+       rgba(143, 163, 255, 0.05);
+   }
+   
+   .financas-editor-limite label {
+     display: grid;
+     gap: 7px;
+     font-size: 0.82rem;
+     font-weight: 700;
+   }
+   
+   .financas-editor-limite input {
+     width: 100%;
+     box-sizing: border-box;
+   }
+   
+   .financas-editor-limite-acoes {
+     display: flex;
+     gap: 8px;
+   }
+   
+   .financas-editor-limite-acoes
+   .primary-btn {
+     width: auto;
+     margin: 0;
+   }
+   
+   .financas-limite-progresso {
+     display: grid;
+     gap: 5px;
+   }
+   
+   .financas-minimo-separador {
+     height: 1px;
+     background:
+       rgba(148, 163, 184, 0.14);
+   }
+   
+   .financas-minimo-total {
+     flex-shrink: 0;
+     color: var(--accent);
+     font-size: 1.15rem;
+   }
+   
+   .financas-minimo-grid {
+     display: grid;
+     grid-template-columns:
+       repeat(2, minmax(0, 1fr));
+     gap: 10px;
+   }
+   
+   .financas-minimo-item {
+     display: grid;
+     gap: 5px;
+     padding: 12px;
+     border: 1px solid
+       rgba(148, 163, 184, 0.13);
+     border-radius: 12px;
+     background:
+       rgba(255, 255, 255, 0.025);
+   }
+   
+   .financas-minimo-item span {
+     color: var(--text-soft);
+     font-size: 0.78rem;
+   }
+   
+   @media (max-width: 560px) {
+     .financas-minimo-topo,
+     .financas-minimo-cabecalho {
+       flex-direction: column;
+     }
+   
+     .financas-editar-limite-btn {
+       width: 100%;
+     }
+   
+     .financas-editor-limite-acoes {
+       flex-direction: column;
+     }
+   
+     .financas-editor-limite-acoes
+     button {
+       width: 100%;
+     }
+   
+     .financas-minimo-grid {
+       grid-template-columns: 1fr;
+     }
+   }
+   .financas-page {
+     display: grid;
+     gap: 12px;
+   }
+   
+   /* Ordem da página: primeiro a visão do mês, depois resumo, categorias/semanas,
+      limite e maiores gastos. As médias ficam por último. */
+   .financas-ordem-pagina {
+     display: flex !important;
+     flex-direction: column;
+   }
+   
+   .financas-ordem-pagina > .page-title { order: 0; }
+   .financas-bloco-mes { order: 1; }
+   .financas-bloco-resumo { order: 2; }
+   .financas-bloco-categorias-semanas { order: 3; }
+   .financas-bloco-limite { order: 4; }
+   .financas-bloco-top-gastos { order: 5; }
+   .financas-bloco-medias { order: 6; }
+   
+   /* Botão ? no canto lateral de cada bloco. */
+   .financas-card-com-ajuda {
+     position: relative;
+   }
+   
+   .financas-ajuda-btn {
+     position: absolute;
+     z-index: 3;
+     top: 11px;
+     right: 11px;
+     width: 25px;
+     height: 25px;
+     padding: 0;
+     border: 1px solid rgba(143, 163, 255, 0.55);
+     border-radius: 50%;
+     background: rgba(143, 163, 255, 0.12);
+     color: var(--accent);
+     font: inherit;
+     font-size: 0.82rem;
+     font-weight: 900;
+     line-height: 1;
+     cursor: pointer;
+   }
+   
+   .financas-ajuda-btn:hover {
+     background: rgba(143, 163, 255, 0.25);
+   }
+   
+   /* Não sobrepor os controles que já ficam no canto direito. */
+   .financas-limite-card .financas-ajuda-btn { right: 42px; }
+   .financas-semanas-card .financas-ajuda-btn { right: 142px; }
+   .financas-bloco-medias .financas-ajuda-btn { right: 214px; }
+   
+   .financas-modal-ajuda {
+     width: min(92vw, 440px);
+   }
+   
+   .financas-texto-ajuda {
+     margin: 0 0 18px;
+     line-height: 1.55;
+   }
+   
+   @media (max-width: 560px) {
+     .financas-bloco-medias .financas-ajuda-btn { right: 42px; }
+     .financas-semanas-card .financas-ajuda-btn { right: 42px; top: 52px; }
+   }
+   
+   /* Cards próprios da página */
+   .financas-card {
+     padding: 16px;
+     border: 1px solid rgba(255, 255, 255, 0.09);
+     border-radius: 16px;
+     background: rgba(255, 255, 255, 0.04);
+   }
+   
+   .financas-card h3 {
+     margin-top: 0;
+   }
+   
+   /* Navegação mensal */
+   .financas-month-navigation {
+     text-align: center;
+   }
+   
+   .financas-month-buttons {
+     display: flex;
+     justify-content: space-between;
+     gap: 10px;
+     margin-top: 12px;
+   }
+   
+   /* Resumos */
+   .financas-balance-card {
+     display: flex;
+     justify-content: flex-end;
+   }
+   
+   .financas-summary-grid {
+     display: grid;
+     grid-template-columns: repeat(4, minmax(0, 1fr));
+     gap: 12px;
+   }
+   
+   .financas-summary-item {
+     min-width: 0;
+   }
+   
+   .financas-card-heading,
+   .financas-gastos-titulo,
+   .financas-gasto-info,
+   .financas-semanas-topo,
+   .financas-semana-cabecalho {
+     display: flex;
+     justify-content: space-between;
+     gap: 12px;
+   }
+   
+   .financas-card-heading,
+   .financas-semanas-topo,
+   .financas-semana-cabecalho {
+     align-items: center;
+   }
+   
+   .financas-gastos-titulo,
+   .financas-gasto-info {
+     align-items: flex-start;
+   }
+   
+   .financas-two-columns {
+     display: grid;
+     grid-template-columns: repeat(2, minmax(0, 1fr));
+     gap: 12px;
+   }
+   
+   /* Limite e gastos fixos */
+   .financas-limite-card {
+     overflow: visible;
+   }
+   
+   .financas-limite-cabecalho {
+     width: 100%;
+     display: flex;
+     align-items: flex-start;
+     justify-content: space-between;
+     gap: 12px;
+     padding: 0;
+     color: inherit;
+     text-align: left;
+     border: 0;
+     background: transparent;
+     cursor: pointer;
+   }
+   
+   .financas-limite-cabecalho h3 {
+     margin: 0 0 5px;
+   }
+   
+   .financas-limite-cabecalho p,
+   .financas-gastos-titulo h3,
+   .financas-gastos-titulo p,
+   .financas-semanas-topo h3,
+   .financas-semanas-topo p {
+     margin: 0;
+   }
+   
+   .financas-semanas-topo > div {
+     display: grid;
+     gap: 3px;
+   }
+   
+   .financas-expandir-icone {
+     flex-shrink: 0;
+     color: var(--accent);
+     font-size: 14px;
+   }
+   
+   .financas-total-fixos {
+     margin-top: 8px !important;
+     color: var(--text);
+     font-size: 0.9rem;
+   }
+   
+   .financas-total-fixos strong {
+     color: var(--accent);
+   }
+   
+   /* Saldo: verde quando há dinheiro sobrando e vermelho quando está negativo. */
+   .financas-saldo-positivo {
+     color: #22c55e !important;
+   }
+   
+   .financas-saldo-negativo {
+     color: #ef4444 !important;
+   }
+   
+   /* Limite excedido. */
+   .financas-limite-ultrapassado {
+     border-color: rgba(239, 68, 68, 0.6);
+   }
+   
+   .financas-limite-linha-vermelha {
+     background: rgba(239, 68, 68, 0.18);
+   }
+   
+   .financas-limite-preenchimento-vermelho {
+     background: #ef4444 !important;
+   }
+   
+   .financas-limite-valor-ultrapassado {
+     display: block;
+     margin-top: 6px;
+     color: #ef4444;
+     font-size: 0.86rem;
+   }
+   
+   .financas-clique-editar {
+     margin-top: 4px !important;
+   }
+   
+   .financas-gastos-fixos-area {
+     display: grid;
+     gap: 14px;
+     margin-top: 18px;
+     padding-top: 16px;
+     border-top: 1px solid rgba(148, 163, 184, 0.16);
+   }
+   
+   .financas-gasto-form {
+     display: grid;
+     grid-template-columns:
+       minmax(0, 2fr)
+       minmax(100px, 1fr)
+       minmax(72px, 0.7fr)
+       minmax(120px, 1fr)
+       auto;
+     align-items: center;
+     gap: 8px;
+   }
+   
+   .financas-gasto-form .primary-btn,
+   .financas-gasto-edicao .primary-btn {
+     width: auto;
+     margin: 0;
+   }
+   
+   .financas-gastos-lista {
+     display: grid;
+     gap: 10px;
+   }
+   
+   .financas-gasto-item {
+     padding: 12px;
+     border: 1px solid rgba(148, 163, 184, 0.16);
+     border-radius: 12px;
+     background: rgba(15, 23, 42, 0.45);
+   }
+   
+   .financas-gasto-inativo {
+     opacity: 0.5;
+   }
+   
+   .financas-gasto-info span {
+     display: block;
+     margin-top: 3px;
+   }
+   
+   .financas-gasto-acoes,
+   .financas-gasto-edicao {
+     display: flex;
+     flex-wrap: wrap;
+     gap: 8px;
+     margin-top: 10px;
+   }
+   
+   .financas-gasto-acoes .toggle-btn {
+     flex: initial;
+   }
+   
+   .financas-gasto-edicao input {
+     flex: 1;
+     min-width: 110px;
+   }
+   
+   .financas-gasto-edicao input[type="number"]:nth-child(2) {
+     max-width: 90px;
+   }
+   
+   .financas-gasto-remover {
+     padding: 8px 12px;
+     border: 1px solid rgba(249, 115, 115, 0.4);
+     border-radius: 999px;
+     background: rgba(249, 115, 115, 0.1);
+     color: #fca5a5;
+     cursor: pointer;
+   }
+   
+   .financas-gastos-vazio {
+     text-align: center;
+   }
+   
+   /* Gastos por semana */
+   .financas-semanas-card {
+     overflow: hidden;
+     border: 1px solid rgba(143, 163, 255, 0.2);
+     background: linear-gradient(180deg, rgba(143, 163, 255, 0.05), rgba(255, 255, 255, 0.02));
+   }
+   
+   .financas-semanas-topo {
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 12px;
+   }
+   
+   .financas-semanas-topo h3 { margin: 0; }
+   
+   .financas-ver-semanas-btn {
+     padding: 8px 13px;
+     border: 1px solid rgba(143, 163, 255, 0.45);
+     border-radius: 999px;
+     background: rgba(143, 163, 255, 0.12);
+     color: var(--accent);
+     font: inherit;
+     font-size: 0.8rem;
+     font-weight: 800;
+     cursor: pointer;
+   }
+   
+   .financas-ver-semanas-btn:hover { background: rgba(143, 163, 255, 0.2); }
+   
+   .financas-escolha-meses {
+     position: relative;
+   }
+   
+   .financas-meses-analisados {
+     padding: 8px 11px;
+     border: 1px solid rgba(143, 163, 255, 0.45);
+     border-radius: 10px;
+     background: rgba(143, 163, 255, 0.12);
+     color: var(--accent);
+     font: inherit;
+     font-size: 0.82rem;
+     font-weight: 800;
+     cursor: pointer;
+   }
+   
+   .financas-opcoes-meses {
+     position: absolute;
+     z-index: 5;
+     top: calc(100% + 7px);
+     right: 0;
+     display: grid;
+     grid-template-columns: repeat(3, 1fr);
+     gap: 6px;
+     width: 190px;
+     padding: 8px;
+     border: 1px solid rgba(143, 163, 255, 0.35);
+     border-radius: 12px;
+     background: #20202c;
+     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+   }
+   
+   .financas-opcoes-meses button {
+     padding: 7px 4px;
+     border: 1px solid rgba(148, 163, 184, 0.2);
+     border-radius: 8px;
+     background: rgba(255, 255, 255, 0.04);
+     color: inherit;
+     font: inherit;
+     font-size: 0.75rem;
+     cursor: pointer;
+   }
+   
+   .financas-opcoes-meses button:hover,
+   .financas-opcoes-meses button.ativo {
+     border-color: rgba(143, 163, 255, 0.7);
+     background: rgba(143, 163, 255, 0.18);
+     color: var(--accent);
+   }
+   
+   .weeks-grid {
+     display: grid;
+     grid-template-columns: repeat(2, minmax(0, 1fr));
+     gap: 10px;
+     margin-top: 14px;
+   }
+   
+   .week-cell {
+     min-width: 0;
+     min-height: 92px;
+     display: grid;
+     align-content: center;
+     gap: 8px;
+     padding: 14px;
+     border: 1px solid rgba(148, 163, 184, 0.15);
+     border-radius: 14px;
+     background: rgba(255, 255, 255, 0.035);
+     color: inherit;
+     font: inherit;
+     text-align: left;
+     cursor: pointer;
+   }
+   
+   .week-cell:hover {
+     border-color: rgba(143, 163, 255, 0.4);
+     background: rgba(143, 163, 255, 0.07);
+   }
+   
+   .week-cell-atual {
+     border-color: rgba(143, 163, 255, 0.65);
+     background: rgba(143, 163, 255, 0.12);
+   }
+   
+   .week-cell-selecionada {
+     border-color: #22c55e;
+     box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+     background: rgba(34, 197, 94, 0.1);
+   }
+   
+   .financas-semana-data {
+     color: var(--text-soft);
+     font-size: 0.82rem;
+   }
+   
+   .week-value {
+     color: var(--text);
+     font-size: 1.08rem;
+     font-weight: 800;
+   }
+   
+   .week-cell-atual .week-value { color: var(--accent); }
+   
+   .financas-semana-detalhes-aberto {
+     display: grid;
+     gap: 12px;
+     margin-top: 12px;
+     padding: 14px;
+     border: 1px solid rgba(143, 163, 255, 0.2);
+     border-radius: 14px;
+     background: rgba(0, 0, 0, 0.12);
+   }
+   
+   .financas-semana-detalhes-topo {
+     display: flex;
+     justify-content: space-between;
+     gap: 12px;
+     padding-bottom: 10px;
+     border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+   }
+   
+   .financas-categoria-semana { display: grid; gap: 5px; }
+   
+   .financas-categoria-semana-linha {
+     display: flex;
+     justify-content: space-between;
+     gap: 10px;
+     font-size: 0.82rem;
+   }
+   
+   .financas-categoria-barra {
+     width: 100%;
+     height: 7px;
+     overflow: hidden;
+     border-radius: 999px;
+     background: rgba(255, 255, 255, 0.07);
+   }
+   
+   .financas-categoria-preenchimento { height: 100%; border-radius: inherit; }
+   .financas-categoria-essencial { background: #8fa3ff; }
+   .financas-categoria-lazer { background: #4c5acf; }
+   .financas-categoria-burrice { background: #f59e0b; }
+   .financas-categoria-investido { background: #10b981; }
+   
+   .financas-compras-semana-botao {
+     width: 100%;
+     padding: 10px 12px;
+     border: 1px solid rgba(143, 163, 255, 0.45);
+     border-radius: 10px;
+     background: rgba(143, 163, 255, 0.11);
+     color: var(--accent);
+     font: inherit;
+     font-weight: 800;
+     cursor: pointer;
+   }
+   
+   .financas-compras-semana-botao:hover { background: rgba(143, 163, 255, 0.2); }
+   
+   .financas-compras-semana {
+     display: grid;
+     gap: 9px;
+     padding-top: 3px;
+   }
+   
+   .financas-compras-semana-lista {
+     display: grid;
+     gap: 7px;
+     max-height: 280px;
+     margin: 0;
+     padding: 0;
+     overflow-y: auto;
+     list-style: none;
+   }
+   
+   .financas-compra-semana-item {
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 12px;
+     padding: 10px;
+     border: 1px solid rgba(148, 163, 184, 0.12);
+     border-radius: 10px;
+     background: rgba(255, 255, 255, 0.025);
+   }
+   
+   .financas-compra-semana-item > div {
+     display: grid;
+     min-width: 0;
+     gap: 3px;
+   }
+   
+   .financas-compra-semana-item span {
+     color: var(--text-soft);
+     font-size: 0.76rem;
+   }
+   
+   .financas-compra-semana-item > strong {
+     flex: 0 0 auto;
+     color: var(--accent);
+   }
+   
+   .financas-modal-compras {
+     width: min(92vw, 560px);
+   }
+   
+   .financas-modal-compras-topo {
+     display: flex;
+     align-items: flex-start;
+     justify-content: space-between;
+     gap: 12px;
+     margin-bottom: 14px;
+   }
+   
+   .financas-modal-compras-topo h3,
+   .financas-modal-compras-topo p { margin: 0; }
+   
+   .financas-fechar-modal {
+     width: 32px;
+     height: 32px;
+     border: 0;
+     border-radius: 50%;
+     background: rgba(255, 255, 255, 0.1);
+     color: inherit;
+     font-size: 1.4rem;
+     cursor: pointer;
+   }
+   
+   .financas-semanas-scroll {
+     max-height: 430px;
+     display: grid;
+     gap: 8px;
+     margin-top: 14px;
+     padding: 8px;
+     overflow-y: auto;
+     scroll-behavior: smooth;
+     border: 1px solid rgba(148, 163, 184, 0.12);
+     border-radius: 14px;
+     background: rgba(0, 0, 0, 0.1);
+   }
+   
+   .financas-semanas-scroll::-webkit-scrollbar { width: 7px; }
+   .financas-semanas-scroll::-webkit-scrollbar-thumb {
+     border-radius: 999px;
+     background: rgba(143, 163, 255, 0.4);
+   }
+   
+   .financas-semana-scroll-item {
+     border: 1px solid rgba(148, 163, 184, 0.12);
+     border-radius: 12px;
+     background: rgba(255, 255, 255, 0.025);
+   }
+   
+   .financas-semana-scroll-principal {
+     border-color: rgba(143, 163, 255, 0.7);
+     background: rgba(143, 163, 255, 0.13);
+   }
+   
+   .financas-semana-scroll-selecionada {
+     border-color: #22c55e;
+     box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.18);
+     background: rgba(34, 197, 94, 0.1);
+   }
+   
+   .financas-semana-scroll-botao {
+     width: 100%;
+     min-height: 58px;
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 12px;
+     padding: 11px 13px;
+     border: 0;
+     background: transparent;
+     color: inherit;
+     font: inherit;
+     text-align: left;
+     cursor: pointer;
+   }
+   
+   .financas-semana-scroll-botao strong { color: var(--accent); }
+   
+   /* Responsividade */
+   @media (max-width: 850px) {
+     .financas-summary-grid {
+       grid-template-columns: repeat(2, minmax(0, 1fr));
+     }
+   
+     .financas-two-columns {
+       grid-template-columns: 1fr;
+     }
+   }
+   
+   @media (max-width: 650px) {
+     .financas-gasto-form {
+       grid-template-columns: 1fr;
+     }
+   
+     .financas-gasto-form .primary-btn {
+       width: 100%;
+     }
+   
+     .financas-gasto-info,
+     .financas-gasto-acoes,
+     .financas-gasto-edicao {
+       flex-direction: column;
+     }
+   
+     .financas-gasto-acoes button,
+     .financas-gasto-edicao button {
+       width: 100%;
+     }
+   }
+   
+   @media (max-width: 560px) {
+     .financas-month-buttons,
+   
+     .financas-summary-grid {
+       grid-template-columns: 1fr;
+     }
+   
+     .financas-balance-card {
+       justify-content: center;
+     }
+   
+     .financas-gasto-edicao input[type="number"]:nth-child(2) {
+       max-width: none;
+     }
+   }
+   
+   @media (max-width: 560px) {
+   }
+   
+   @media (max-width: 900px) {
+   }
+   
+   @media (max-width: 560px) {
+     .financas-semanas-topo {
+       align-items: flex-start;
+     }
+   
+     .financas-semanas-navegacao {
+       grid-template-columns: 1fr;
+     }
+   
+     .financas-semana-resumo {
+       min-height: 78px;
+       padding: 10px;
+     }
+   }
+   
+   @media (max-width: 560px) {
+     .weeks-grid {
+       grid-template-columns: repeat(2, minmax(0, 1fr));
+       gap: 8px;
+     }
+     .week-cell { min-height: 82px; padding: 10px; }
+     .financas-semana-data { font-size: 0.73rem; }
+     .week-value { font-size: 0.94rem; }
+     .financas-semanas-scroll { max-height: 360px; }
+     .financas-semana-detalhes-topo { flex-direction: column; }
+   }
+   /* ========================================
+      LIMITE + MÍNIMO PARA PAGAR CONTAS
+   ======================================== */
+   
+   .financas-minimo-card {
+     display: grid;
+     gap: 14px;
+   }
+   
+   .financas-minimo-topo,
+   .financas-minimo-cabecalho {
+     display: flex;
+     align-items: flex-start;
+     justify-content: space-between;
+     gap: 14px;
+   }
+   
+   .financas-minimo-topo h3,
+   .financas-minimo-cabecalho h3 {
+     margin: 0 0 5px;
+   }
+   
+   .financas-minimo-cabecalho p {
+     margin: 0;
+   }
+   
+   .financas-limite-destaque {
+     display: block;
+     color: var(--accent);
+     font-size: 1.25rem;
+   }
+   
+   .financas-editar-limite-btn {
+     flex-shrink: 0;
+     padding: 8px 13px;
+     border: 1px solid
+       rgba(143, 163, 255, 0.45);
+     border-radius: 999px;
+     background:
+       rgba(143, 163, 255, 0.12);
+     color: var(--accent);
+     font: inherit;
+     font-size: 0.8rem;
+     font-weight: 800;
+     cursor: pointer;
+   }
+   
+   .financas-editar-limite-btn:hover {
+     background:
+       rgba(143, 163, 255, 0.2);
+   }
+   
+   .financas-editor-limite {
+     display: grid;
+     gap: 12px;
+     padding: 14px;
+     border: 1px solid
+       rgba(143, 163, 255, 0.2);
+     border-radius: 13px;
+     background:
+       rgba(143, 163, 255, 0.05);
+   }
+   
+   .financas-editor-limite label {
+     display: grid;
+     gap: 7px;
+     font-size: 0.82rem;
+     font-weight: 700;
+   }
+   
+   .financas-editor-limite input {
+     width: 100%;
+     box-sizing: border-box;
+   }
+   
+   .financas-editor-limite-acoes {
+     display: flex;
+     gap: 8px;
+   }
+   
+   .financas-editor-limite-acoes
+   .primary-btn {
+     width: auto;
+     margin: 0;
+   }
+   
+   .financas-limite-progresso {
+     display: grid;
+     gap: 5px;
+   }
+   
+   .financas-minimo-separador {
+     height: 1px;
+     background:
+       rgba(148, 163, 184, 0.14);
+   }
+   
+   .financas-minimo-total {
+     flex-shrink: 0;
+     color: var(--accent);
+     font-size: 1.15rem;
+   }
+   
+   .financas-minimo-grid {
+     display: grid;
+     grid-template-columns:
+       repeat(2, minmax(0, 1fr));
+     gap: 10px;
+   }
+   
+   .financas-minimo-item {
+     display: grid;
+     gap: 5px;
+     padding: 12px;
+     border: 1px solid
+       rgba(148, 163, 184, 0.13);
+     border-radius: 12px;
+     background:
+       rgba(255, 255, 255, 0.025);
+   }
+   
+   .financas-minimo-item span {
+     color: var(--text-soft);
+     font-size: 0.78rem;
+   }
+   
+   @media (max-width: 560px) {
+     .financas-minimo-topo,
+     .financas-minimo-cabecalho {
+       flex-direction: column;
+     }
+   
+     .financas-editar-limite-btn {
+       width: 100%;
+     }
+   
+     .financas-editor-limite-acoes {
+       flex-direction: column;
+     }
+   
+     .financas-editor-limite-acoes
+     button {
+       width: 100%;
+     }
+   
+     .financas-minimo-grid {
+       grid-template-columns: 1fr;
+     }
+   }
+   

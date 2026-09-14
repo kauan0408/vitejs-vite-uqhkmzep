@@ -1,0 +1,1 @@
+export { auth, db, loginComGoogle, logout } from "../firebase.js";

@@ -1,0 +1,172 @@
+.ui-button {
+  padding: 10px 14px;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: 0.2s;
+}
+
+.ui-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ui-button-primary {
+  color: white;
+  border: none;
+  background: #5668d8;
+}
+
+.ui-button-secondary {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ui-button-danger {
+  color: #ffdada;
+  border: 1px solid rgba(255, 90, 90, 0.35);
+  background: rgba(255, 70, 70, 0.13);
+}
+
+.ui-card {
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ui-field {
+  display: grid;
+  gap: 7px;
+}
+
+.ui-field-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ui-input,
+.ui-select {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px;
+  color: inherit;
+  font: inherit;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.ui-input:focus,
+.ui-select:focus {
+  border-color: rgba(150, 170, 255, 0.9);
+}
+
+.ui-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.ui-modal {
+  width: min(500px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 20px;
+  border-radius: 18px;
+  background: #202236;
+}
+
+.ui-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ui-modal-close {
+  color: inherit;
+  font-size: 22px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+
+.ui-loading {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+}
+
+.ui-spinner {
+  width: 36px;
+  height: 36px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: ui-spin 0.8s linear infinite;
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ui-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1100;
+  max-width: 350px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #292c42;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.ui-toast-success {
+  border: 1px solid rgba(80, 220, 140, 0.4);
+}
+
+.ui-toast-error {
+  border: 1px solid rgba(255, 90, 90, 0.4);
+}
+
+.ui-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ui-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.ui-sidebar-button {
+  width: 100%;
+  padding: 11px 12px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+}
+
+.ui-sidebar-button:hover,
+.ui-sidebar-button.active {
+  background: rgba(255, 255, 255, 0.08);
+}
