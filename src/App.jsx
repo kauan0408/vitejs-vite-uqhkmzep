@@ -1308,6 +1308,93 @@ export default function App() {
     notificar("Lançamento atualizado.", "sucesso");
   }
 
+  // Alterna somente uma dívida de Acertos. Quando ela fica inativa, significa
+  // que você pagou a parte daquela pessoa: cria uma única despesa vinculada.
+  // Ao ativar de novo, remove exatamente essa despesa. Tudo passa pelo estado
+  // do App e, por isso, pelo mesmo salvamento automático do Firebase.
+  function alternarAtivoDividaQuemMeDeve(id) {
+    const original = (quemMeDeve.lancamentos || []).find(
+      (lancamento) => lancamento.id === id
+    );
+
+    if (!original || original.tipo !== "divida") return;
+
+    const vaiFicarAtivo = original.ativo === false;
+    const integrado = original.integrarFinanceiro !== false;
+    const idTransacaoInativa = original.transacaoInativaId || gerarId();
+    const pessoa = (quemMeDeve.pessoas || []).find(
+      (item) => item.id === original.pessoaId
+    );
+
+    setQuemMeDeve((atual) => ({
+      ...atual,
+      lancamentos: (atual.lancamentos || []).map((lancamento) =>
+        lancamento.id === id
+          ? {
+              ...lancamento,
+              ativo: vaiFicarAtivo,
+              // Use null, nunca undefined: o Firestore não aceita undefined.
+              transacaoInativaId: vaiFicarAtivo ? null : idTransacaoInativa,
+            }
+          : lancamento
+      ),
+    }));
+
+    if (integrado) {
+      setTransacoes((lista) => {
+        if (vaiFicarAtivo) {
+          return lista.filter(
+            (transacao) =>
+              transacao.id !== original.transacaoInativaId &&
+              transacao.quemMeDeveLancamentoInativoId !== id
+          );
+        }
+
+        // Não duplica a despesa ao tocar duas vezes no mesmo botão.
+        if (
+          lista.some(
+            (transacao) =>
+              transacao.id === idTransacaoInativa ||
+              transacao.quemMeDeveLancamentoInativoId === id
+          )
+        ) {
+          return lista;
+        }
+
+        return [
+          {
+            id: idTransacaoInativa,
+            tipo: "despesa",
+            valor: Number(original.valor || 0),
+            categoria: original.categoria || "Essencial",
+            descricao: `Pagamento para ${pessoa?.nome || "pessoa"}: ${
+              original.descricao || "dívida"
+            }`,
+            formaPagamento: original.formaPagamento || "outros",
+            cartaoId:
+              original.formaPagamento === "credito"
+                ? original.cartaoId || null
+                : null,
+            dataHora: new Date().toISOString(),
+            origemMovimento: "quem_me_deve",
+            origemAcertos: true,
+            quemMeDeveLancamentoInativoId: id,
+            pessoaId: original.pessoaId,
+            movimentaSaldo: true,
+          },
+          ...lista,
+        ];
+      });
+    }
+
+    notificar(
+      vaiFicarAtivo
+        ? "Gasto ativado novamente e a despesa vinculada foi removida."
+        : "Gasto inativado: sua parte foi registrada como despesa nas Finanças.",
+      "sucesso"
+    );
+  }
+
 
   function transferirDividaQuemMeDeve({
     lancamentoId,
@@ -1761,6 +1848,7 @@ export default function App() {
       adicionarDivida,
       registrarPagamento,
       atualizarLancamentoQuemMeDeve,
+      alternarAtivoDividaQuemMeDeve,
       transferirDividaQuemMeDeve,
       removerLancamentoQuemMeDeve,
 
