@@ -2,7 +2,9 @@
 
 // Importa React e hooks usados na página:
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useFinance } from "../../App.jsx";
+import "./ListaPage.css";
 
 // ✅ Firebase (online sync)
 // Ajuste o caminho se o seu firebase estiver em outro lugar
@@ -116,28 +118,55 @@ const PRIORITIES = {
 
 function Modal({ open, title, children, onClose }) {
   useEffect(() => {
-    if (!open) return;
+    if (!open) return undefined;
+
     const onKey = (e) => {
       if (e.key === "Escape") onClose?.();
     };
+
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" onMouseDown={onClose}>
-      <div className="modal-card" onMouseDown={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <strong style={{ fontSize: 14 }}>{title}</strong>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Fechar" title="Fechar">
+  return createPortal(
+    <div
+      className="lista-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div
+        className="lista-modal-card"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="lista-modal-header">
+          <strong className="lista-modal-title">{title}</strong>
+
+          <button
+            type="button"
+            className="lista-modal-close"
+            onClick={onClose}
+            aria-label="Fechar"
+            title="Fechar"
+          >
             ✕
           </button>
         </div>
-        <div style={{ marginTop: 12, textAlign: "left" }}>{children}</div>
+
+        <div className="lista-modal-content">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -145,7 +174,7 @@ function Toast({ text }) {
   if (!text) return null;
   return (
     <div
-      className="toast"
+      className="lista-toast"
       style={{
         position: "fixed",
         top: 18,
@@ -238,6 +267,10 @@ export default function ListaPage() {
   const voiceFinalRef = useRef("");
   const restartingRef = useRef(false);
 
+  // Revisão do que foi falado antes de realmente adicionar à lista.
+  const [voiceReviewOpen, setVoiceReviewOpen] = useState(false);
+  const [voiceDraftItems, setVoiceDraftItems] = useState([]);
+
   // ✅ FIX: ref para o estado atual de escuta (evita “state stale” no onend)
   const listeningRef = useRef(false);
 
@@ -250,6 +283,18 @@ export default function ListaPage() {
     const t = setTimeout(() => setToastText(""), 3000);
     return () => clearTimeout(t);
   }, [toastText]);
+
+
+  useEffect(() => {
+    if (!voiceReviewOpen || typeof document === "undefined") return undefined;
+
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+    };
+  }, [voiceReviewOpen]);
 
   // ---- Auto-clean: delete lists 100% done after 1 week
   function cleanupAutoDeleteLists(currentStore) {
@@ -890,21 +935,151 @@ export default function ListaPage() {
     return typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
   }
 
+  function montarRascunhosDaVoz(raw) {
+    const partes = splitIntoItems(raw).slice(0, 50);
+
+    const unicos = [];
+    const vistos = new Set();
+
+    for (const parte of partes) {
+      const chave = normalizeText(parte);
+      if (!chave || vistos.has(chave)) continue;
+      vistos.add(chave);
+      unicos.push(parte);
+    }
+
+    setVoiceDraftItems((atuais) => {
+      const mapaAtual = new Map(
+        atuais.map((item) => [normalizeText(item.text), item])
+      );
+
+      return unicos.map((parte) => {
+        const anterior = mapaAtual.get(normalizeText(parte));
+        return {
+          id: anterior?.id || uuid(),
+          text: parte,
+          selected: anterior ? anterior.selected !== false : true,
+        };
+      });
+    });
+  }
+
   function stopVoice(silent = false) {
     try {
       if (recRef.current) recRef.current.onend = null;
     } catch {}
+
     try {
       recRef.current?.stop?.();
     } catch {}
+
     recRef.current = null;
     restartingRef.current = false;
-
-    // ✅ FIX
     listeningRef.current = false;
-
     setIsListening(false);
-    if (!silent) toastMsg("Voz parada. Revise e clique em Adicionar.");
+
+    const textoFinal = String(
+      voiceFinalRef.current || newItemText || ""
+    ).trim();
+
+    if (textoFinal) {
+      montarRascunhosDaVoz(textoFinal);
+      setVoiceReviewOpen(true);
+    }
+
+    if (!silent) {
+      toastMsg("Voz parada. Revise os itens antes de adicionar.");
+    }
+  }
+
+  function fecharRevisaoVoz() {
+    if (listeningRef.current || isListening) {
+      stopVoice(true);
+    }
+
+    setVoiceReviewOpen(false);
+    setVoiceDraftItems([]);
+    setNewItemText("");
+    voiceFinalRef.current = "";
+  }
+
+  function alternarItemVoz(id) {
+    setVoiceDraftItems((atuais) =>
+      atuais.map((item) =>
+        item.id === id
+          ? { ...item, selected: !item.selected }
+          : item
+      )
+    );
+  }
+
+  function selecionarTodosVoz(valor) {
+    setVoiceDraftItems((atuais) =>
+      atuais.map((item) => ({ ...item, selected: valor }))
+    );
+  }
+
+  function adicionarSelecionadosDaVoz() {
+    if (!selectedListId) return;
+
+    const escolhidos = voiceDraftItems.filter(
+      (item) => item.selected !== false
+    );
+
+    if (!escolhidos.length) {
+      return toastMsg("Marque pelo menos um item para adicionar.");
+    }
+
+    let next = [...listItems];
+    let added = 0;
+
+    for (const itemVoz of escolhidos) {
+      const texto = String(itemVoz.text || "").trim();
+      if (!texto) continue;
+
+      const exists = next.some(
+        (item) => normalizeText(item.text) === normalizeText(texto)
+      );
+
+      if (exists) continue;
+
+      const parsed = parseItemText(texto);
+
+      next.push({
+        id: uuid(),
+        text: parsed.text,
+        status: "pending",
+        createdAt: nowISO(),
+        doneAt: null,
+        note: "",
+        quantity: parsed.quantity,
+        unit: parsed.unit,
+        estimatedPrice: "",
+        paidPrice: "",
+        category: selectedList?.category || "",
+        priority: "normal",
+        pinned: false,
+      });
+
+      added++;
+    }
+
+    if (added > 0) {
+      updateItems(next);
+    }
+
+    setVoiceReviewOpen(false);
+    setVoiceDraftItems([]);
+    setNewItemText("");
+    voiceFinalRef.current = "";
+
+    toastMsg(
+      added > 1
+        ? `${added} itens adicionados.`
+        : added === 1
+          ? "1 item adicionado."
+          : "Os itens escolhidos já estavam na lista."
+    );
   }
 
   function startVoice() {
@@ -912,6 +1087,7 @@ export default function ListaPage() {
       toastMsg("Seu navegador não suporta voz (SpeechRecognition).");
       return;
     }
+
     if (isListening) return;
 
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -922,46 +1098,49 @@ export default function ListaPage() {
     rec.interimResults = true;
     rec.continuous = true;
 
-    voiceFinalRef.current = voiceFinalRef.current || "";
+    // Começa sempre uma revisão nova para não misturar com uma gravação anterior.
+    voiceFinalRef.current = "";
+    setNewItemText("");
+    setVoiceDraftItems([]);
+    setVoiceReviewOpen(true);
 
     rec.onstart = () => {
-      // ✅ FIX
       listeningRef.current = true;
-
       setIsListening(true);
-      toastMsg("🎙️ Gravando... fale: arroz, detergente, balões (vírgula separa itens)");
+      toastMsg("🎙️ Gravando... fale os itens e diga 'vírgula' para separar.");
     };
 
     rec.onresult = (e) => {
       let interim = "";
 
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        const text = e.results[i][0]?.transcript || "";
+        const trecho = e.results[i][0]?.transcript || "";
+
         if (e.results[i].isFinal) {
-          voiceFinalRef.current += text + " ";
+          voiceFinalRef.current += trecho + " ";
         } else {
-          interim += text;
+          interim += trecho;
         }
       }
 
       const preview = (voiceFinalRef.current + interim).trim();
       setNewItemText(preview);
+      montarRascunhosDaVoz(preview);
     };
 
     rec.onerror = () => {
-      // ✅ FIX
       listeningRef.current = false;
-
       setIsListening(false);
       toastMsg("Falha ao usar microfone (permissão ou erro).");
     };
 
     rec.onend = () => {
-      // ✅ FIX: usa ref (não state) pra decidir reiniciar
       if (!restartingRef.current && listeningRef.current) {
         restartingRef.current = true;
+
         setTimeout(() => {
           restartingRef.current = false;
+
           try {
             rec.start();
           } catch {
@@ -981,6 +1160,7 @@ export default function ListaPage() {
       toastMsg("Não consegui iniciar o microfone.");
       listeningRef.current = false;
       setIsListening(false);
+      setVoiceReviewOpen(false);
     }
   }
 
@@ -1152,7 +1332,7 @@ export default function ListaPage() {
                 onKeyDown={(e) => e.key === "Enter" && addItem()}
               />
               <p className="muted small" style={{ marginTop: 6 }}>
-                🎙️ Fale ou digite com vírgulas. Depois clique em <strong>Adicionar</strong>.
+                🎙️ Ao falar, você revisa os itens em uma janela antes de adicionar.
               </p>
             </div>
 
@@ -1488,6 +1668,198 @@ export default function ListaPage() {
           </button>
         )}
       </Modal>
+
+      {/* ---------- REVISÃO DA VOZ ---------- */}
+      {voiceReviewOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="lista-voice-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Revisar itens falados"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) fecharRevisaoVoz();
+              }}
+            >
+              <button
+                type="button"
+                className="lista-voice-close"
+                onClick={fecharRevisaoVoz}
+                aria-label="Fechar revisão"
+                title="Fechar"
+              >
+                ✕
+              </button>
+
+              <div
+                className="lista-voice-card"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="lista-voice-header">
+                  <div style={{ minWidth: 0 }}>
+                <strong style={{ display: "block" }}>
+                  🎙️ Revisar antes de lançar
+                </strong>
+                <span className="muted small">
+                  Marque só o que você quer adicionar.
+                </span>
+              </div>
+
+                  {isListening ? (
+                    <button
+                      type="button"
+                      className="chip"
+                      onClick={() => stopVoice()}
+                      style={{ width: "auto" }}
+                    >
+                      ⏹️ Parar
+                    </button>
+                  ) : null}
+                </div>
+
+                {isListening ? (
+              <div
+                className="card"
+                style={{
+                  padding: 10,
+                  border: "1px solid rgba(96,165,250,.35)",
+                }}
+              >
+                <strong style={{ fontSize: 13 }}>🎙️ Estou ouvindo...</strong>
+                <div className="muted small" style={{ marginTop: 4 }}>
+                  Diga “vírgula” entre os itens.
+                </div>
+              </div>
+            ) : null}
+
+            {newItemText ? (
+              <div
+                className="muted small"
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,.04)",
+                  maxHeight: 70,
+                  overflowY: "auto",
+                }}
+              >
+                <strong>Ouvi:</strong> {newItemText}
+              </div>
+            ) : null}
+
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <button
+                type="button"
+                className="chip"
+                style={{ width: "auto" }}
+                onClick={() => selecionarTodosVoz(true)}
+                disabled={!voiceDraftItems.length}
+              >
+                ✓ Todos
+              </button>
+
+              <button
+                type="button"
+                className="chip"
+                style={{ width: "auto" }}
+                onClick={() => selecionarTodosVoz(false)}
+                disabled={!voiceDraftItems.length}
+              >
+                Nenhum
+              </button>
+
+              <span className="muted small">
+                {voiceDraftItems.filter((item) => item.selected !== false).length}
+                {" de "}
+                {voiceDraftItems.length} selecionado(s)
+              </span>
+            </div>
+
+            <div
+              style={{
+                minHeight: 110,
+                maxHeight: "42vh",
+                overflowY: "auto",
+                display: "grid",
+                gap: 7,
+                paddingRight: 2,
+              }}
+            >
+              {voiceDraftItems.length ? (
+                voiceDraftItems.map((item, index) => (
+                  <label
+                    key={item.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "28px minmax(0, 1fr)",
+                      gap: 8,
+                      alignItems: "center",
+                      padding: "9px 10px",
+                      borderRadius: 12,
+                      border: item.selected !== false
+                        ? "1px solid rgba(96,165,250,.40)"
+                        : "1px solid rgba(255,255,255,.08)",
+                      background: item.selected !== false
+                        ? "rgba(96,165,250,.09)"
+                        : "rgba(255,255,255,.025)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={item.selected !== false}
+                      onChange={() => alternarItemVoz(item.id)}
+                      style={{ width: 18, height: 18 }}
+                    />
+
+                    <span style={{ minWidth: 0, wordBreak: "break-word" }}>
+                      <strong style={{ marginRight: 6 }}>#{index + 1}</strong>
+                      {item.text}
+                    </span>
+                  </label>
+                ))
+              ) : (
+                <div
+                  className="muted small"
+                  style={{
+                    display: "grid",
+                    placeItems: "center",
+                    minHeight: 110,
+                    textAlign: "center",
+                    padding: 16,
+                  }}
+                >
+                  {isListening
+                    ? "Os itens vão aparecer aqui conforme você falar."
+                    : "Não encontrei itens para revisar."}
+                </div>
+              )}
+            </div>
+
+                <button
+                  type="button"
+                  className="primary-btn"
+                  onClick={adicionarSelecionadosDaVoz}
+                  disabled={
+                    isListening ||
+                    !voiceDraftItems.some((item) => item.selected !== false)
+                  }
+                  style={{ width: "100%", minHeight: 44 }}
+                >
+                  ＋ Adicionar selecionados
+                </button>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
 
       {/* ---------- Modals ---------- */}
 
