@@ -21,6 +21,12 @@ function numero(valor) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function moedaMaquininha(valor) {
+  const digitos = String(valor || "").replace(/\D/g, "");
+  if (!digitos) return "";
+  return (Number(digitos) / 100).toFixed(2).replace(".", ",");
+}
+
 function normalizeText(valor) {
   return String(valor || "")
     .trim()
@@ -102,6 +108,8 @@ export default function QuemMeDevePage() {
     atualizarLancamentoQuemMeDeve,
     removerLancamentoQuemMeDeve,
     transferirDividaQuemMeDeve,
+    adicionarTransacao,
+    removerTransacao,
     notificar,
   } = useFinance();
 
@@ -158,7 +166,7 @@ export default function QuemMeDevePage() {
   const [deOnde, setDeOnde] = useState("");
   const [formaPagamento, setFormaPagamento] = useState("pix");
   const [categoriaFinanceira, setCategoriaFinanceira] =
-    useState("Burrice");
+    useState("Essencial");
   const [cartaoId, setCartaoId] = useState("");
   const [integrarFinanceiro, setIntegrarFinanceiro] = useState(true);
   const [valorTotal, setValorTotal] = useState("");
@@ -208,6 +216,7 @@ export default function QuemMeDevePage() {
   const [lendoFoto, setLendoFoto] = useState(false);
   const [progressoFoto, setProgressoFoto] = useState(0);
   const [rascunhosImportados, setRascunhosImportados] = useState([]);
+  const [conferenciaImportacaoAberta, setConferenciaImportacaoAberta] = useState(false);
 
   // Voz.
   const recognitionRef = useRef(null);
@@ -562,7 +571,7 @@ export default function QuemMeDevePage() {
     setDescricao("");
     setDeOnde("");
     setFormaPagamento("pix");
-    setCategoriaFinanceira("Burrice");
+    setCategoriaFinanceira("Essencial");
     setCartaoId("");
     setIntegrarFinanceiro(true);
     setValorTotal("");
@@ -647,11 +656,9 @@ export default function QuemMeDevePage() {
     limparFormulario();
     setPessoaId(id);
     setSentido(sentidoAcerto);
-    setModoLancamentoDivida("quitar");
+    setModoLancamentoDivida("abater");
     const pendente = saldoPessoaPorSentido(id, sentidoAcerto);
-    setValorDireto(
-      pendente > 0 ? String(Number(pendente.toFixed(2))) : ""
-    );
+    setValorDireto("");
     setModal("acerto");
   }
 
@@ -697,7 +704,7 @@ export default function QuemMeDevePage() {
     setDescricao(item.descricao || "");
     setDeOnde(item.deOnde || "");
     setFormaPagamento(item.formaPagamento || "pix");
-    setCategoriaFinanceira(item.categoria || "Burrice");
+    setCategoriaFinanceira(item.categoria || "Essencial");
     setCartaoId(item.cartaoId || "");
     setIntegrarFinanceiro(item.integrarFinanceiro !== false);
     setValorTotal(String(item.valorTotal ?? ""));
@@ -1325,14 +1332,30 @@ export default function QuemMeDevePage() {
   function alternarAtivoLancamento(item) {
     if (!item || item.tipo !== "divida") return;
 
-    atualizarLancamentoQuemMeDeve?.(item.id, {
-      ativo: item.ativo === false,
-    });
+    const vaiFicarAtivo = item.ativo === false;
+    if (!vaiFicarAtivo && !item.transacaoFinanceiraId) {
+      const idFinanceiro = `acerto-pago-${item.id}`;
+      adicionarTransacao?.({
+        id: idFinanceiro,
+        tipo: "despesa",
+        valor: numero(item.valor),
+        descricao: `Pagamento por ${item.descricao || "dívida"}`,
+        categoria: item.categoria || "Essencial",
+        formaPagamento: item.formaPagamento || "outros",
+        dataHora: item.dataHora || new Date().toISOString(),
+        origemMovimento: "acertos",
+        ehAcerto: true,
+      });
+      atualizarLancamentoQuemMeDeve?.(item.id, { ativo: false, transacaoFinanceiraId: idFinanceiro });
+    } else {
+      if (vaiFicarAtivo && item.transacaoFinanceiraId) removerTransacao?.(item.transacaoFinanceiraId);
+      atualizarLancamentoQuemMeDeve?.(item.id, { ativo: vaiFicarAtivo, transacaoFinanceiraId: vaiFicarAtivo ? undefined : item.transacaoFinanceiraId });
+    }
 
     avisar(
       item.ativo === false
-        ? "Gasto reativado e incluído novamente nos cálculos."
-        : "Gasto marcado como inativo e retirado dos cálculos.",
+        ? "Gasto reativado: voltou a ser valor que a pessoa te deve."
+        : "Gasto inativado: entrou como despesa sua em Finanças.",
       "sucesso"
     );
   }
@@ -2084,7 +2107,7 @@ export default function QuemMeDevePage() {
     const normal = normalizeText(original);
     const total = numero(basico.valor);
 
-    let categoria = "Burrice";
+    let categoria = "Essencial";
     if (normal.includes("essencial")) categoria = "Essencial";
     else if (normal.includes("lazer")) categoria = "Lazer";
     else if (
@@ -2272,12 +2295,25 @@ export default function QuemMeDevePage() {
   function aplicarVozCompleta(texto) {
     const dadosVoz = extrairDadosCompletosDaVoz(texto);
 
+    // Voz também abre a mesma revisão central: nada é lançado automaticamente.
+    setRascunhosImportados([{
+      id: idLocal(), origem: "voz", textoOriginal: texto,
+      descricao: dadosVoz.descricao || "Sem descrição",
+      valor: dadosVoz.valor || "",
+      formaPagamento: dadosVoz.formaPagamento || "outros",
+      sentido: dadosVoz.sentido || "me_deve",
+      pessoas: dadosVoz.pessoas || [], dadosVoz,
+    }]);
+    setConferenciaImportacaoAberta(true);
+    setTextoVoz(texto);
+    return;
+
     setOrigemImportacao("voz");
     setDescricao(dadosVoz.descricao || "");
     setValorTotal(dadosVoz.valor || "");
     setFormaPagamento(dadosVoz.formaPagamento || "outros");
     setSentido(dadosVoz.sentido || "me_deve");
-    setCategoriaFinanceira(dadosVoz.categoria || "Burrice");
+    setCategoriaFinanceira(dadosVoz.categoria || "Essencial");
     setIntegrarFinanceiro(dadosVoz.integrarFinanceiro !== false);
     setCartaoId(dadosVoz.cartaoId || "");
     setTaxaJuros(dadosVoz.jurosTaxa || "");
@@ -2392,8 +2428,8 @@ export default function QuemMeDevePage() {
         return avisar("Não encontrei um valor claro nessa foto.", "erro");
       }
 
-      setRascunhosImportados((atuais) => [...atuais, ...novos]);
-      avisar(`${novos.length} rascunho(s) criado(s) pela foto.`, "sucesso");
+      setRascunhosImportados(novos);
+      setConferenciaImportacaoAberta(true);
     } catch (erro) {
       console.error(erro);
       avisar("Não consegui ler a foto.", "erro");
@@ -3487,14 +3523,13 @@ export default function QuemMeDevePage() {
               </div>
 
               <div className="devedor-detalhes-grid">
-                <label>O quê<input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Pizza" /></label>
                 <label>
                   Valor total
                   <input
                     inputMode="decimal"
                     value={valorTotal}
                     onChange={(e) => {
-                      const novoValorTotal = e.target.value;
+                      const novoValorTotal = moedaMaquininha(e.target.value);
                       setValorTotal(novoValorTotal);
                       const totalNovo = numero(novoValorTotal);
                       if (euSelecionado && String(minhaPartePercentual).trim() !== "") {
@@ -3507,6 +3542,7 @@ export default function QuemMeDevePage() {
                     placeholder="0,00"
                   />
                 </label>
+                <label>O quê<input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Pizza" /></label>
               </div>
             </section>
 
@@ -3526,7 +3562,7 @@ export default function QuemMeDevePage() {
                 <label>
                   Categoria
                   <select value={categoriaFinanceira} onChange={(e) => setCategoriaFinanceira(e.target.value)}>
-                    <option value="Burrice">Burrice</option><option value="Essencial">Essencial</option><option value="Lazer">Lazer</option><option value="Investido">Investido</option>
+                    <option value="Essencial">Essencial</option><option value="Lazer">Lazer</option><option value="Burrice">Burrice</option><option value="Investido">Investido</option>
                   </select>
                 </label>
                 {formaPagamento === "credito" ? (
@@ -3699,7 +3735,7 @@ export default function QuemMeDevePage() {
                 <label>
                   {modoLancamentoDivida === "quitar" ? "Valor da quitação" : "Quanto será abatido agora"}
                   <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 7 }}>
-                    <input inputMode="decimal" value={valorDireto} readOnly={modoLancamentoDivida === "quitar"} onChange={(e) => setValorDireto(e.target.value)} placeholder="0,00" />
+                    <input inputMode="numeric" value={valorDireto} readOnly={modoLancamentoDivida === "quitar"} onChange={(e) => setValorDireto(moedaMaquininha(e.target.value))} placeholder="0,00" />
                     {modoLancamentoDivida === "abater" ? <button type="button" className="toggle-btn" onClick={() => setValorDireto(String(Number(pendenteAtual.toFixed(2))))}>Tudo</button> : null}
                   </div>
                 </label>
@@ -3788,6 +3824,26 @@ export default function QuemMeDevePage() {
           </div>
         );
       })() : null}
+
+      {conferenciaImportacaoAberta ? (
+        <div className="devedores-modal" style={{ zIndex: 2147483647, padding: 12 }} onClick={() => setConferenciaImportacaoAberta(false)}>
+          <div className="devedores-modal-card" onClick={(e) => e.stopPropagation()} style={{ width: "min(520px, 100%)", maxHeight: "calc(100dvh - 24px)", overflowY: "auto" }}>
+            <button type="button" className="fechar" onClick={() => setConferenciaImportacaoAberta(false)}>×</button>
+            <h3>Confira antes de usar</h3>
+            <p className="muted">Nada foi salvo. Edite, apague ou use somente os itens certos.</p>
+            <div style={{ display: "grid", gap: 8 }}>
+              {rascunhosImportados.map((r) => <article key={r.id} className="card" style={{ padding: 10, overflow: "hidden" }}>
+                <input value={r.descricao || ""} onChange={(e) => setRascunhosImportados((itens) => itens.map((x) => x.id === r.id ? { ...x, descricao: e.target.value } : x))} placeholder="Descrição" />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 7, marginTop: 7, alignItems: "center" }}>
+                  <input inputMode="decimal" value={r.valor || ""} onChange={(e) => setRascunhosImportados((itens) => itens.map((x) => x.id === r.id ? { ...x, valor: e.target.value } : x))} placeholder="0,00" />
+                  <button type="button" className="toggle-btn" onClick={() => { aplicarRascunho(r); setConferenciaImportacaoAberta(false); }}>Usar</button>
+                  <button type="button" className="toggle-btn danger-soft" onClick={() => setRascunhosImportados((itens) => itens.filter((x) => x.id !== r.id))}>Apagar</button>
+                </div>
+              </article>)}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {modal === "editar-lancamento" ? (
         <div className="devedores-modal">
