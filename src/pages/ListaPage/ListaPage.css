@@ -1,0 +1,206 @@
+/* src/pages/ListaPage/ListaPage.css
+   CSS exclusivo da página Listas.
+   Não usa .modal-overlay/.modal-card/.icon-btn para evitar conflito com global.css.
+*/
+
+.lista-modal-overlay,
+.lista-voice-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 120000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  overflow: auto !important;
+  background: rgba(0, 0, 0, 0.76) !important;
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.lista-modal-card {
+  position: relative;
+  width: min(430px, calc(100vw - 32px)) !important;
+  max-width: 430px !important;
+  max-height: min(82dvh, 720px) !important;
+  margin: auto !important;
+  padding: 16px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  border: 1px solid rgba(173, 216, 255, 0.24);
+  border-radius: 18px;
+  background: rgba(9, 18, 38, 0.98);
+  color: var(--text, #d1d5db);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.82);
+  animation: lista-modal-enter 0.16s ease-out;
+}
+
+.lista-modal-header {
+  position: sticky;
+  top: -16px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -16px -16px 0;
+  padding: 14px 14px 10px 16px;
+  background: rgba(9, 18, 38, 0.98);
+  border-bottom: 1px solid rgba(173, 216, 255, 0.10);
+}
+
+.lista-modal-title {
+  min-width: 0;
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.lista-modal-content {
+  margin-top: 12px;
+  text-align: left;
+}
+
+.lista-modal-close,
+.lista-voice-close {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 1px solid rgba(173, 216, 255, 0.48) !important;
+  border-radius: 50% !important;
+  background: rgba(9, 18, 38, 0.98) !important;
+  color: rgba(220, 235, 255, 0.98) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 38px !important;
+  line-height: 1 !important;
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* Modal específico da voz */
+.lista-voice-overlay {
+  z-index: 130000 !important;
+  padding:
+    max(64px, calc(env(safe-area-inset-top, 0px) + 54px))
+    14px
+    max(16px, env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.lista-voice-close {
+  position: fixed !important;
+  z-index: 130002 !important;
+  top: max(12px, env(safe-area-inset-top, 12px)) !important;
+  left: max(12px, env(safe-area-inset-left, 12px)) !important;
+}
+
+.lista-voice-card {
+  position: relative;
+  width: min(560px, calc(100vw - 28px)) !important;
+  max-width: 560px !important;
+  max-height: min(78dvh, 690px) !important;
+  margin: auto !important;
+  padding: 14px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  border: 1px solid rgba(96, 165, 250, 0.30);
+  border-radius: 18px;
+  background: rgba(9, 18, 38, 0.99);
+  color: var(--text, #d1d5db);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.86);
+  animation: lista-modal-enter 0.16s ease-out;
+}
+
+.lista-voice-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+/* O conteúdo rolável do modal de voz é só a lista interna que o JSX já define.
+   Isso evita o "modal gigante vazio". */
+.lista-voice-card > * {
+  min-width: 0;
+}
+
+.lista-toast {
+  position: fixed !important;
+  z-index: 140000 !important;
+  top: max(14px, env(safe-area-inset-top, 14px)) !important;
+  right: 14px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  max-width: min(360px, calc(100vw - 28px));
+  padding: 10px 14px;
+  border: 1px solid rgba(173, 216, 255, 0.30);
+  border-radius: 14px;
+  background: rgba(9, 18, 38, 0.98);
+  color: var(--accent, #8fa3ff);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.65);
+  animation: lista-toast-enter 0.16s ease-out;
+}
+
+@keyframes lista-modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes lista-toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 520px) {
+  .lista-modal-overlay {
+    padding: 12px !important;
+  }
+
+  .lista-modal-card {
+    width: calc(100vw - 24px) !important;
+    max-height: 84dvh !important;
+    border-radius: 16px;
+  }
+
+  .lista-voice-overlay {
+    align-items: center !important;
+    padding:
+      max(62px, calc(env(safe-area-inset-top, 0px) + 52px))
+      10px
+      max(12px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .lista-voice-card {
+    width: calc(100vw - 20px) !important;
+    max-height: 76dvh !important;
+    border-radius: 16px;
+  }
+}
