@@ -198,6 +198,37 @@ function transacaoEhDeAcerto(transacao) {
   );
 }
 
+// No cadastro atual de Acertos, quando uma pessoa te paga o movimento é salvo
+// como "nulo" com a categoria "ressarcimento". Aqui ele é tratado como
+// reembolso somente na página Finanças, para aumentar o saldo sem parecer
+// salário ou Receita do mês.
+function transacaoEhReembolso(transacao) {
+  if (transacao?.tipo === "reembolso") return true;
+
+  return (
+    transacaoEhDeAcerto(transacao) &&
+    transacao?.tipo === "nulo" &&
+    String(transacao?.categoria || "").toLowerCase() === "ressarcimento"
+  );
+}
+
+function transacaoEhCompraNoCartao(transacao) {
+  return (
+    transacao?.tipo === "despesa" &&
+    String(transacao?.formaPagamento || "").toLowerCase() === "credito"
+  );
+}
+
+function transacaoEntraComoDespesa(transacao, debitarCartaoNaCompra) {
+  if (transacao?.tipo === "pagamentoCartao") {
+    return !debitarCartaoNaCompra;
+  }
+
+  if (transacao?.tipo !== "despesa") return false;
+
+  return debitarCartaoNaCompra || !transacaoEhCompraNoCartao(transacao);
+}
+
 // No modo automático, o valor entra na despesa do mês como já acontecia.
 // No modo manual, ele só entra depois que a pessoa confirma "Já paguei".
 // O campo "pagamentoManualDesde" impede que a troca de modo altere meses antigos.
@@ -207,11 +238,15 @@ function gastoFixoDeveEntrarNoMes(gasto, chaveMes) {
   const inicioManual = gasto.pagamentoManualDesde || chaveMes;
   if (chaveMes < inicioManual) return true;
 
+  // Registros antigos usavam apenas true e continuam válidos. Os novos
+  // pagamentos manuais criam uma transação real, então não podem entrar
+  // novamente como gasto automático (para não duplicar o valor).
   return gasto?.pagamentosManuais?.[chaveMes] === true;
 }
 
 function gastoFixoFoiPagoManualNoMes(gasto, chaveMes) {
-  return gasto?.pagamentosManuais?.[chaveMes] === true;
+  const registro = gasto?.pagamentosManuais?.[chaveMes];
+  return registro === true || registro?.pago === true;
 }
 
 function transacaoPertenceAoOrcamento(transacao, gasto) {
@@ -227,16 +262,70 @@ function transacaoPertenceAoOrcamento(transacao, gasto) {
   }
 
   const descricao = normalizeText(transacao.descricao);
-  const nome = normalizeText(gasto.nome);
+  const nomes = String(gasto.nome || "")
+    .split(",")
+    .map((parte) => normalizeText(parte))
+    .filter(Boolean);
 
-  if (!descricao || !nome) return false;
+  if (!descricao || nomes.length === 0) return false;
 
-  return (
-    descricao === nome ||
-    descricao.startsWith(`${nome} `) ||
-    descricao.endsWith(` ${nome}`) ||
-    descricao.includes(` ${nome} `)
+  // O nome precisa ser exatamente igual para evitar que uma compra de outro
+  // assunto consuma o orçamento por engano.
+  // Um orçamento como “água, luz, internet” usa o mesmo valor para os três.
+  // Cada lançamento precisa ser igual a um dos nomes separados por vírgula.
+  return nomes.includes(descricao);
+}
+
+// Em Acertos, o Histórico conserva o valor total da compra para que seja
+// possível ver o que foi pago. Já o orçamento deve consumir somente a parte
+// que ficou para você. Registros novos trazem minhaParteValor; nos antigos,
+// quando há apenas os participantes, a divisão é igual entre eles.
+function valorQueConsomeOrcamento(transacao) {
+  const total = Number(transacao?.valor || 0);
+  if (!(total > 0) || !transacaoEhDeAcerto(transacao)) return total;
+
+  const minhaParte = [
+    transacao?.minhaParteValor,
+    transacao?.minhaParte,
+    transacao?.valorMinhaParte,
+    transacao?.valorPessoal,
+  ]
+    .map(Number)
+    .find((valor) => Number.isFinite(valor) && valor >= 0);
+
+  if (minhaParte !== undefined) {
+    return Math.min(total, minhaParte);
+  }
+
+  const meuPercentual = Number(
+    transacao?.meuPercentual ?? transacao?.minhaPorcentagem
   );
+  if (Number.isFinite(meuPercentual) && meuPercentual > 0) {
+    return Math.min(total, (total * meuPercentual) / 100);
+  }
+
+  const participantes = Number(
+    transacao?.quantidadeParticipantes ??
+      transacao?.totalParticipantes ??
+      transacao?.quantidadePessoas ??
+      (Array.isArray(transacao?.participantes)
+        ? transacao.participantes.length
+        : Array.isArray(transacao?.pessoaIds)
+          ? transacao.pessoaIds.length
+          : 0)
+  );
+
+  return participantes > 1 ? total / participantes : total;
+}
+
+function transacoesDoPagamentoManual(gasto, transacoes, chaveMes) {
+  return (Array.isArray(transacoes) ? transacoes : []).filter((transacao) => {
+    if (transacao?.tipo !== "despesa") return false;
+    if (String(transacao?.gastoFixoId || "") !== String(gasto?.id || "")) {
+      return false;
+    }
+    return transacao?.gastoFixoMes === chaveMes;
+  });
 }
 
 function resumoOrcamentoNoMes(gasto, transacoes, chaveMesAlvo) {
@@ -287,7 +376,10 @@ function resumoOrcamentoNoMes(gasto, transacoes, chaveMesAlvo) {
           data.getMonth() === cursor.getMonth()
         );
       })
-      .reduce((total, transacao) => total + Number(transacao.valor || 0), 0);
+      .reduce(
+        (total, transacao) => total + valorQueConsomeOrcamento(transacao),
+        0
+      );
 
     const saldoFinal = disponivel - gastoReal;
     const carregaPositivo = gasto?.carregarSaldoPositivo !== false;
@@ -325,6 +417,41 @@ function resumoOrcamentoNoMes(gasto, transacoes, chaveMesAlvo) {
     restante: 0,
     excedente: 0,
   };
+}
+
+function detalharOrcamentoNoMes(gasto, transacoes, chaveMes) {
+  const nomes = String(gasto?.nome || "")
+    .split(",")
+    .map((nome) => nome.trim())
+    .filter(Boolean);
+  const detalhes = nomes.map((nome) => ({
+    nome,
+    valor: 0,
+    quantidade: 0,
+  }));
+  const outros = { nome: "Outros lançamentos vinculados", valor: 0, quantidade: 0 };
+
+  const [ano, mes] = String(chaveMes || "").split("-").map(Number);
+  if (!ano || !mes) return detalhes;
+
+  (Array.isArray(transacoes) ? transacoes : []).forEach((transacao) => {
+    if (transacao?.tipo !== "despesa") return;
+    if (transacao?.origemMovimento === "reserva") return;
+    if (!transacaoPertenceAoOrcamento(transacao, gasto)) return;
+
+    const data = new Date(transacao.dataHora || transacao.data);
+    if (Number.isNaN(data.getTime())) return;
+    if (data.getFullYear() !== ano || data.getMonth() !== mes - 1) return;
+
+    const indice = detalhes.findIndex(
+      (item) => normalizeText(item.nome) === normalizeText(transacao.descricao)
+    );
+    const destino = indice >= 0 ? detalhes[indice] : outros;
+    destino.valor += valorQueConsomeOrcamento(transacao);
+    destino.quantidade += 1;
+  });
+
+  return outros.quantidade > 0 ? [...detalhes, outros] : detalhes;
 }
 
 
@@ -805,6 +932,8 @@ export default function FinancasPage() {
 
   const {
     transacoes,
+    adicionarTransacao,
+    removerTransacao,
     profile,
     atualizarProfile,
     mesReferencia,
@@ -825,6 +954,10 @@ export default function FinancasPage() {
   } = finance;
 
   const [modalCategorias, setModalCategorias] = useState(false);
+  // Por padrão, Acertos ficam fora da visão financeira. Quando mostrados,
+  // pagamentos recebidos entram como reembolso no saldo.
+  const [mostrarAcertosNoResumo, setMostrarAcertosNoResumo] = useState(false);
+  const [mostrarPersonalizarResumo, setMostrarPersonalizarResumo] = useState(false);
   // Explicações curtas abertas pelos botões de interrogação dos cartões.
   const [ajudaAberta, setAjudaAberta] = useState(null);
   // A pessoa escolhe quantos meses completos anteriores quer comparar (1 a 6).
@@ -836,17 +969,18 @@ export default function FinancasPage() {
 
   // Gastos fixos dentro do cartão de limite
   const [mostrarGastosFixos, setMostrarGastosFixos] = useState(false);
-  // Por padrão, a tela Finanças ignora os Acertos. Eles continuam guardados
-  // em Quem me deve e no filtro Acertos do Histórico.
-  const [mostrarAcertosNoResumo, setMostrarAcertosNoResumo] = useState(false);
+  const [mostrarFormularioGasto, setMostrarFormularioGasto] = useState(false);
+  const [gastoComAcoesAbertas, setGastoComAcoesAbertas] = useState(null);
+  const [gastoComDetalhamentoAberto, setGastoComDetalhamentoAberto] = useState(null);
   const [nomeGastoFixo, setNomeGastoFixo] = useState("");
   const [valorGastoFixo, setValorGastoFixo] = useState("");
   const [categoriaGastoFixo, setCategoriaGastoFixo] = useState("essencial");
   const [diaVencimentoGastoFixo, setDiaVencimentoGastoFixo] = useState("");
-  const [modoGastoMensal, setModoGastoMensal] = useState("fixo");
+  const [modoGastoMensal, setModoGastoMensal] = useState("orcamento");
   const [carregarSaldoPositivo, setCarregarSaldoPositivo] = useState(true);
   const [carregarSaldoNegativo, setCarregarSaldoNegativo] = useState(true);
   const [gastoFixoEditando, setGastoFixoEditando] = useState(null);
+  const [nomeGastoEditando, setNomeGastoEditando] = useState("");
   const [valorGastoEditando, setValorGastoEditando] = useState("");
   const [diaGastoEditando, setDiaGastoEditando] = useState("");
   const [modoGastoEditando, setModoGastoEditando] = useState("fixo");
@@ -864,6 +998,20 @@ export default function FinancasPage() {
   // ✅ NOVO: modal por item (não por lista)
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [itemModal, setItemModal] = useState(null);
+  const [avisoAlteracao, setAvisoAlteracao] = useState("");
+  const avisoAlteracaoTimerRef = useRef(null);
+
+  function mostrarAvisoAlteracao(mensagem) {
+    setAvisoAlteracao(mensagem);
+    window.clearTimeout(avisoAlteracaoTimerRef.current);
+    avisoAlteracaoTimerRef.current = window.setTimeout(() => {
+      setAvisoAlteracao("");
+    }, 3000);
+  }
+
+  useEffect(() => () => {
+    window.clearTimeout(avisoAlteracaoTimerRef.current);
+  }, []);
 
   const openItemModal = (payload) => {
     setItemModal(payload);
@@ -895,6 +1043,43 @@ export default function FinancasPage() {
   }
 
   const salariosPorMes = profile?.salariosPorMes || {};
+  // Mantém o comportamento atual para quem ainda não escolheu: descontar na compra.
+  // A escolha passa a ficar salva no perfil quando o botão é usado.
+  const debitarCartaoNaCompra = profile?.debitarCartaoNaCompra !== false;
+
+  function salvarModoDebitoCartao(debitarNaCompra) {
+    atualizarProfile?.({ debitarCartaoNaCompra: debitarNaCompra });
+    mostrarAvisoAlteracao(
+      debitarNaCompra
+        ? "✓ Compras no cartão agora descontam na compra."
+        : "✓ Compras no cartão agora descontam ao pagar a fatura."
+    );
+  }
+
+  function normalizarFrequenciaAlertaLimite(valor) {
+    const modo = valor?.modo === "horas" || valor?.modo === "dias" || valor?.modo === "nunca"
+      ? valor.modo
+      : "dias";
+
+    return {
+      modo,
+      quantidade: Math.max(1, Number(valor?.quantidade) || 1),
+    };
+  }
+
+  const frequenciaAlertaLimite = normalizarFrequenciaAlertaLimite(
+    profile?.frequenciaAlertaLimite
+  );
+
+  function salvarFrequenciaAlertaLimite(alteracoes) {
+    atualizarProfile?.({
+      frequenciaAlertaLimite: {
+        ...frequenciaAlertaLimite,
+        ...alteracoes,
+      },
+    });
+  }
+
   function getSalarioMes(ano, mes0) {
     const k = monthKey(ano, mes0);
     return Number(salariosPorMes[k] ?? profile?.rendaMensal ?? 0);
@@ -938,19 +1123,26 @@ export default function FinancasPage() {
         // Depósitos/retiradas da Reserva são transferências internas e já
         // aparecem na página Reserva; não são uma despesa do mês.
         if (t.origemMovimento === "reserva") return;
-        if (!mostrarAcertosNoResumo && transacaoEhDeAcerto(t)) return;
+        if (transacaoEhDeAcerto(t) && !mostrarAcertosNoResumo) return;
         const dt = new Date(t.dataHora);
         if (inRange(dt)) {
           const valor = Number(t.valor || 0);
           if (t.tipo === "receita") {
             receitas += valor;
-          } else if (t.tipo === "reembolso") {
+          } else if (transacaoEhReembolso(t)) {
             entradasAcertos += valor;
-          } else if (t.tipo === "despesa") {
-            despesasTransacoes += valor;
-            if (t.formaPagamento === "credito") {
+          } else {
+            if (transacaoEhCompraNoCartao(t)) {
+              // Crédito usado é sempre acompanhado, mesmo quando o saldo só
+              // será descontado no pagamento da fatura.
               gastosCartao += valor;
             }
+
+            if (!transacaoEntraComoDespesa(t, debitarCartaoNaCompra)) {
+              return;
+            }
+
+            despesasTransacoes += valor;
             const cat = (t.categoria || "").toLowerCase();
             if (cat === "essencial") categorias.essencial += valor;
             if (cat === "lazer") categorias.lazer += valor;
@@ -981,9 +1173,9 @@ export default function FinancasPage() {
       const mapa = new Map();
       (Array.isArray(transacoes) ? transacoes : []).forEach((t) => {
         if (t.origemMovimento === "reserva") return;
-        if (!mostrarAcertosNoResumo && transacaoEhDeAcerto(t)) return;
+        if (transacaoEhDeAcerto(t) && !mostrarAcertosNoResumo) return;
         const dt = new Date(t.dataHora);
-        if (t.tipo === "despesa" && inRange(dt)) {
+        if (transacaoEntraComoDespesa(t, debitarCartaoNaCompra) && inRange(dt)) {
           const v = Number(t.valor || 0);
           if (!v) return;
           const key = normalizarNome(t.descricao || "Sem descrição");
@@ -1035,7 +1227,7 @@ export default function FinancasPage() {
     const resumoPrev = montarResumoMes(mesPrev, anoPrev);
 
     return { resumoAtual, pendenteAnterior: 0 };
-  }, [transacoes, mesReferencia, profile?.gastosFixos, profile?.rendaMensal, profile?.salariosPorMes, profile?.diaPagamento, mostrarAcertosNoResumo]);
+  }, [transacoes, mesReferencia, profile?.gastosFixos, profile?.rendaMensal, profile?.salariosPorMes, profile?.diaPagamento, mostrarAcertosNoResumo, debitarCartaoNaCompra]);
 
   const { resumoAtual, pendenteAnterior } = resumo;
 
@@ -1051,7 +1243,6 @@ export default function FinancasPage() {
   const orcamentosVariaveis = useMemo(
     () =>
       gastosFixos
-        .filter((gasto) => gasto?.ativo !== false)
         .filter(ehOrcamentoVariavel)
         .map((gasto) => ({
           gasto,
@@ -1072,6 +1263,85 @@ export default function FinancasPage() {
       ),
     [orcamentosVariaveis]
   );
+
+  const totalFixosMensaisPlanejados = useMemo(
+    () =>
+      gastosFixos
+        .filter((gasto) => gasto?.ativo !== false)
+        .filter((gasto) => !ehOrcamentoVariavel(gasto))
+        .reduce(
+          (total, gasto) =>
+            total + getValorFixo(gasto?.valoresPorMes || {}, chaveMesAtual),
+          0
+        ),
+    [gastosFixos, chaveMesAtual]
+  );
+
+  const totalParcelasDoMes = useMemo(() => {
+    const [ano, mes] = chaveMesAtual.split("-").map(Number);
+    return (Array.isArray(transacoes) ? transacoes : []).filter((t) => { const d=new Date(t.dataHora); const n=Number(t.parcelaTotal||t.parcelasTotal||t.parcelas||0); return t.tipo==="despesa" && String(t.formaPagamento||"").toLowerCase()==="credito" && n>1 && d.getFullYear()===ano && d.getMonth()===mes-1; }).reduce((s,t)=>s+Number(t.valor||t.valorParcela||0),0);
+  }, [transacoes, chaveMesAtual]);
+
+  const minimoMensalPlanejado = totalFixosMensaisPlanejados + totalOrcamentosVariaveis + totalParcelasDoMes;
+
+  // No resumo fechado, este total mostra o que o aplicativo já considera
+  // quitado/descontado neste mês: contas automáticas, contas quitadas no
+  // botão manual e a fatura do cartão (ou as parcelas do mês, se ainda não
+  // houver pagamento de fatura registrado). Assim não contamos a mesma
+  // compra de cartão duas vezes.
+  const contasPagasNoMes = useMemo(() => {
+    const [anoTexto, mesTexto] = chaveMesAtual.split("-");
+    const ano = Number(anoTexto);
+    const mes0 = Number(mesTexto) - 1;
+    const lista = Array.isArray(transacoes) ? transacoes : [];
+
+    const estaNoMes = (transacao) => {
+      const data = new Date(transacao?.dataHora);
+      return (
+        !Number.isNaN(data.getTime()) &&
+        data.getFullYear() === ano &&
+        data.getMonth() === mes0
+      );
+    };
+
+    const fixosCobradosAutomaticamente = gastosFixos
+      .filter((gasto) => gasto?.ativo !== false)
+      .filter((gasto) => !ehOrcamentoVariavel(gasto))
+      .filter((gasto) => gastoFixoDeveEntrarNoMes(gasto, chaveMesAtual))
+      .reduce(
+        (total, gasto) =>
+          total + getValorFixo(gasto?.valoresPorMes || {}, chaveMesAtual),
+        0
+      );
+
+    const fixosQuitadosManual = lista
+      .filter(estaNoMes)
+      .filter(
+        (transacao) =>
+          transacao?.origemMovimento === "gasto_fixo_manual" &&
+          transacao?.gastoFixoMes === chaveMesAtual
+      )
+      .reduce((total, transacao) => total + Number(transacao?.valor || 0), 0);
+
+    const faturaPaga = lista
+      .filter(estaNoMes)
+      .filter((transacao) => transacao?.tipo === "pagamentoCartao")
+      .reduce((total, transacao) => total + Number(transacao?.valor || 0), 0);
+
+    const parcelasDoCartao = lista
+      .filter(estaNoMes)
+      .filter(transacaoEhCompraNoCartao)
+      .filter((transacao) => Number(transacao?.parcelaTotal || 0) > 1)
+      .reduce((total, transacao) => total + Number(transacao?.valor || 0), 0);
+
+    const cartaoConsiderado = faturaPaga > 0 ? faturaPaga : parcelasDoCartao;
+
+    return {
+      total: fixosCobradosAutomaticamente + fixosQuitadosManual + cartaoConsiderado,
+      fixos: fixosCobradosAutomaticamente + fixosQuitadosManual,
+      cartao: cartaoConsiderado,
+    };
+  }, [gastosFixos, transacoes, chaveMesAtual]);
 
   /* Mostra quatro semanas por vez; a quarta é a semana de referência. */
   const gastosPorSemana = useMemo(() => {
@@ -1148,8 +1418,8 @@ export default function FinancasPage() {
       const itens = [];
 
       (Array.isArray(transacoes) ? transacoes : []).forEach((transacao) => {
-        if (transacao?.tipo !== "despesa") return;
-        if (!mostrarAcertosNoResumo && transacaoEhDeAcerto(transacao)) return;
+        if (!transacaoEntraComoDespesa(transacao, debitarCartaoNaCompra)) return;
+        if (transacaoEhDeAcerto(transacao) && !mostrarAcertosNoResumo) return;
         const data = new Date(transacao.dataHora);
         if (Number.isNaN(data.getTime())) return;
         const momento = data.getTime();
@@ -1170,7 +1440,6 @@ export default function FinancasPage() {
       });
 
       gastosFixos.forEach((gasto) => {
-        if (gasto?.ativo === false) return;
         if (ehOrcamentoVariavel(gasto)) return;
         const chaveDoMes = monthKey(semana.ano, semana.mes);
         if (!gastoFixoDeveEntrarNoMes(gasto, chaveDoMes)) return;
@@ -1229,7 +1498,6 @@ export default function FinancasPage() {
     profile?.gastosFixos,
     mesReferencia?.ano,
     mesReferencia?.mes,
-    mostrarAcertosNoResumo,
   ]);
 
   useEffect(() => {
@@ -1443,17 +1711,21 @@ export default function FinancasPage() {
       gastosFixos: [...gastosFixos, novoGasto],
     });
 
+    mostrarAvisoAlteracao(`✓ “${nome}” foi criado.`);
+
     setNomeGastoFixo("");
     setValorGastoFixo("");
     setCategoriaGastoFixo("essencial");
     setDiaVencimentoGastoFixo("");
-    setModoGastoMensal("fixo");
+    setModoGastoMensal("orcamento");
     setCarregarSaldoPositivo(true);
     setCarregarSaldoNegativo(true);
+    setMostrarFormularioGasto(false);
   }
 
   function iniciarEdicaoGastoFixo(gasto) {
     setGastoFixoEditando(gasto.id);
+    setNomeGastoEditando(gasto.nome || "");
     setValorGastoEditando(
       String(obterValorGastoFixo(gasto) || "")
     );
@@ -1467,6 +1739,7 @@ export default function FinancasPage() {
 
   function cancelarEdicaoGastoFixo() {
     setGastoFixoEditando(null);
+    setNomeGastoEditando("");
     setValorGastoEditando("");
     setDiaGastoEditando("");
     setModoGastoEditando("fixo");
@@ -1475,6 +1748,7 @@ export default function FinancasPage() {
   }
 
   function salvarEdicaoGastoFixo(id) {
+    const nome = nomeGastoEditando.trim();
     const valor = normalizarNumero(
       valorGastoEditando
     );
@@ -1483,6 +1757,11 @@ export default function FinancasPage() {
       diaGastoEditando
     );
     const ehVariavel = modoGastoEditando === "orcamento";
+
+    if (!nome) {
+      window.alert("Digite o nome do gasto ou orçamento.");
+      return;
+    }
 
     if (valor <= 0) {
       window.alert("Digite um valor válido.");
@@ -1510,6 +1789,7 @@ export default function FinancasPage() {
 
       return {
         ...gasto,
+        nome,
         modo: ehVariavel ? "orcamento" : "fixo",
         diaVencimento: ehVariavel ? 1 : diaVencimento,
         carregarSaldoPositivo: ehVariavel
@@ -1529,10 +1809,13 @@ export default function FinancasPage() {
       gastosFixos: novaLista,
     });
 
+    mostrarAvisoAlteracao(`✓ “${nome}” foi atualizado.`);
+
     cancelarEdicaoGastoFixo();
   }
 
   function alternarGastoFixo(id) {
+    const gastoAtual = gastosFixos.find((gasto) => gasto.id === id);
     const novaLista = gastosFixos.map((gasto) =>
       gasto.id === id
         ? {
@@ -1543,9 +1826,28 @@ export default function FinancasPage() {
     );
 
     atualizarProfile({ gastosFixos: novaLista });
+    if (gastoAtual) {
+      mostrarAvisoAlteracao(
+        gastoAtual.ativo === false
+          ? `✓ “${gastoAtual.nome}” foi ativado.`
+          : `↗ “${gastoAtual.nome}” foi desativado.`
+      );
+    }
   }
 
   function alternarPagamentoManualGastoFixo(id) {
+    const gastoAtual = gastosFixos.find((gasto) => gasto.id === id);
+
+    if (
+      gastoAtual?.pagamentoManual &&
+      gastoFixoFoiPagoManualNoMes(gastoAtual, chaveMesAtual)
+    ) {
+      window.alert(
+        "Este gasto já foi quitado manualmente. Primeiro use “Marcar como não pago” se quiser voltar ao modo automático; assim o valor não será cobrado duas vezes."
+      );
+      return;
+    }
+
     const novaLista = gastosFixos.map((gasto) => {
       if (gasto.id !== id || ehOrcamentoVariavel(gasto)) {
         return gasto;
@@ -1569,27 +1871,116 @@ export default function FinancasPage() {
     });
 
     atualizarProfile({ gastosFixos: novaLista });
+    if (gastoAtual) {
+      mostrarAvisoAlteracao(
+        gastoAtual.pagamentoManual
+          ? `↗ Pagamento automático ativado para “${gastoAtual.nome}”.`
+          : `✓ Pagamento manual ativado para “${gastoAtual.nome}”.`
+      );
+    }
   }
 
   function marcarGastoFixoComoPago(id, pago) {
-    const novaLista = gastosFixos.map((gasto) => {
-      if (gasto.id !== id || ehOrcamentoVariavel(gasto)) {
-        return gasto;
+    const gasto = gastosFixos.find((item) => item.id === id);
+    if (!gasto || ehOrcamentoVariavel(gasto)) return;
+
+    const registroAtual = gasto.pagamentosManuais?.[chaveMesAtual];
+
+    if (pago) {
+      const valor = obterValorGastoFixo(gasto);
+      if (valor <= 0) {
+        window.alert("Este gasto não possui um valor válido neste mês.");
+        return;
       }
 
-      return {
-        ...gasto,
-        pagamentosManuais: {
-          ...(gasto.pagamentosManuais || {}),
-          [chaveMesAtual]: pago,
-        },
-      };
-    });
+      const confirmar = window.confirm(
+        `Quitar “${gasto.nome}” em ${formatCurrency(valor)}? Uma despesa será criada agora e aparecerá no Histórico.`
+      );
+      if (!confirmar) return;
 
-    atualizarProfile({ gastosFixos: novaLista });
+      const agora = new Date();
+      const anoDaTela = mesReferencia?.ano ?? agora.getFullYear();
+      const mesDaTela = mesReferencia?.mes ?? agora.getMonth();
+      const dataPagamento =
+        anoDaTela === agora.getFullYear() && mesDaTela === agora.getMonth()
+          ? agora
+          : obterDataVencimentoGastoFixo(gasto, anoDaTela, mesDaTela);
+
+      const transacaoCriada = adicionarTransacao?.({
+        tipo: "despesa",
+        descricao: gasto.nome,
+        valor,
+        categoria: gasto.categoria || "essencial",
+        formaPagamento: "dinheiro",
+        cartaoId: null,
+        fixo: true,
+        origemMovimento: "gasto_fixo_manual",
+        gastoFixoId: gasto.id,
+        gastoFixoMes: chaveMesAtual,
+        dataHora: dataPagamento.toISOString(),
+      });
+
+      if (!transacaoCriada?.id) {
+        window.alert("Não foi possível registrar o pagamento no Histórico.");
+        return;
+      }
+
+      atualizarProfile({
+        gastosFixos: gastosFixos.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                // Quitar diretamente também muda esta conta para manual no
+                // mês atual: a despesa real abaixo substitui a cobrança
+                // automática, sem somar duas vezes.
+                pagamentoManual: true,
+                pagamentoManualDesde: chaveMesAtual,
+                pagamentosManuais: {
+                  ...(item.pagamentosManuais || {}),
+                  [chaveMesAtual]: {
+                    pago: true,
+                    transacaoId: transacaoCriada.id,
+                    pagoEm: new Date().toISOString(),
+                  },
+                },
+              }
+            : item
+        ),
+      });
+      mostrarAvisoAlteracao(`✓ “${gasto.nome}” foi quitado e entrou no Histórico.`);
+      return;
+    }
+
+    const transacaoId =
+      registroAtual && typeof registroAtual === "object"
+        ? registroAtual.transacaoId
+        : null;
+
+    const confirmar = window.confirm(
+      "Tem certeza que este gasto NÃO foi pago? Ele voltará a ficar pendente, e a despesa criada por este botão será removida do Histórico."
+    );
+    if (!confirmar) return;
+
+    if (transacaoId) removerTransacao?.(transacaoId);
+
+    atualizarProfile({
+      gastosFixos: gastosFixos.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              pagamentosManuais: {
+                ...(item.pagamentosManuais || {}),
+                [chaveMesAtual]: false,
+              },
+            }
+          : item
+      ),
+    });
+    mostrarAvisoAlteracao(`↗ “${gasto.nome}” voltou a ficar pendente.`);
   }
 
   function removerGastoFixo(id) {
+    const gasto = gastosFixos.find((item) => item.id === id);
     const confirmar = window.confirm("Deseja remover este gasto mensal?");
 
     if (!confirmar) {
@@ -1599,6 +1990,9 @@ export default function FinancasPage() {
     atualizarProfile({
       gastosFixos: gastosFixos.filter((gasto) => gasto.id !== id),
     });
+    if (gasto) {
+      mostrarAvisoAlteracao(`↗ “${gasto.nome}” foi removido.`);
+    }
   }
   const limiteGastoMensal = Number(profile?.limiteGastoMensal || 0);
 
@@ -1619,6 +2013,7 @@ export default function FinancasPage() {
 
     atualizarProfile?.({ limiteGastoMensal: valor });
     setAlertaLimiteFechado(false);
+    mostrarAvisoAlteracao("✓ Limite mensal atualizado.");
   }
 
   const diaPagamento = profile?.diaPagamento || "";
@@ -1672,12 +2067,21 @@ export default function FinancasPage() {
       return;
     }
 
+    if (frequenciaAlertaLimite.modo === "nunca") {
+      setMostrarAlertaLimite(false);
+      return;
+    }
+
     try {
       const ultimoAviso = Number(localStorage.getItem(chaveAlertaLimite) || 0);
       const agora = Date.now();
-      const VINTE_QUATRO_HORAS = 24 * 60 * 60 * 1000;
+      const intervalo =
+        frequenciaAlertaLimite.quantidade *
+        (frequenciaAlertaLimite.modo === "horas"
+          ? 60 * 60 * 1000
+          : 24 * 60 * 60 * 1000);
 
-      if (!ultimoAviso || agora - ultimoAviso >= VINTE_QUATRO_HORAS) {
+      if (!ultimoAviso || agora - ultimoAviso >= intervalo) {
         setMostrarAlertaLimite(true);
       } else {
         setMostrarAlertaLimite(false);
@@ -1685,7 +2089,12 @@ export default function FinancasPage() {
     } catch {
       setMostrarAlertaLimite(true);
     }
-  }, [limiteFoiAtingido, chaveAlertaLimite]);
+  }, [
+    limiteFoiAtingido,
+    chaveAlertaLimite,
+    frequenciaAlertaLimite.modo,
+    frequenciaAlertaLimite.quantidade,
+  ]);
 
   function fecharAlertaLimite() {
     try {
@@ -1731,7 +2140,7 @@ export default function FinancasPage() {
 
       (Array.isArray(transacoes) ? transacoes : []).forEach((t) => {
         if (t.origemMovimento === "reserva") return;
-        if (!mostrarAcertosNoResumo && transacaoEhDeAcerto(t)) return;
+        if (transacaoEhDeAcerto(t) && !mostrarAcertosNoResumo) return;
         const dt = new Date(t.dataHora);
         if (!inRange(dt)) return;
 
@@ -1741,16 +2150,17 @@ export default function FinancasPage() {
           return;
         }
 
-        if (t.tipo === "reembolso") {
+        if (transacaoEhReembolso(t)) {
           entradasAcertos += valor;
           return;
         }
 
-        if (t.tipo === "despesa") {
+        if (transacaoEhCompraNoCartao(t)) {
+          gastosCartao += valor;
+        }
+
+        if (transacaoEntraComoDespesa(t, debitarCartaoNaCompra)) {
           despesasTransacoes += valor;
-          if (t.formaPagamento === "credito") {
-            gastosCartao += valor;
-          }
         }
       });
 
@@ -1818,8 +2228,14 @@ export default function FinancasPage() {
 
     const divisor = mesesComDados.length || 1;
 
-    const mediaContas =
+    const mediaContasHistorica =
       mesesComDados.reduce((soma, m) => soma + m.gastosFixos, 0) / divisor;
+
+    // Uma conta fixa recém-cadastrada ainda não aparece nos meses passados.
+    // Neste caso, ela continua sendo uma conta que precisa caber na renda.
+    const contasFixasCadastradas = Number(resumoAtual?.totalGastosFixos || 0);
+    const mediaContas =
+      mediaContasHistorica > 0 ? mediaContasHistorica : contasFixasCadastradas;
 
     const mediaCartao =
       mesesComDados.reduce((soma, m) => soma + m.gastosCartao, 0) / divisor;
@@ -1840,6 +2256,31 @@ export default function FinancasPage() {
     const diferencaDespesas = atual.despesas - mediaDespesas;
     const diferencaCartao = atual.gastosCartao - mediaCartao;
     const diferencaSaldo = atual.saldo - mediaSaldo;
+    const mediaMinimaParaContas = mediaContas + mediaCartao;
+    const entradasAtuais = Number(resumoAtual?.receitas || 0) +
+      Number(resumoAtual?.entradasAcertos || 0);
+    const faltaParaCobrirContas = Math.max(
+      0,
+      mediaMinimaParaContas - entradasAtuais
+    );
+    const sobraDepoisDasContas = Math.max(
+      0,
+      entradasAtuais - mediaMinimaParaContas
+    );
+
+    const meio = Math.ceil(mesesComDados.length / 2);
+    const contasNoInicio = mesesComDados.slice(0, meio);
+    const contasRecentes = mesesComDados.slice(meio);
+    const mediaInicioContas = contasNoInicio.length
+      ? contasNoInicio.reduce((soma, m) => soma + m.gastosFixos, 0) / contasNoInicio.length
+      : 0;
+    const mediaRecenteContas = contasRecentes.length
+      ? contasRecentes.reduce((soma, m) => soma + m.gastosFixos, 0) / contasRecentes.length
+      : 0;
+    const variacaoContasPercentual =
+      mesesComDados.length >= 2 && mediaInicioContas > 0
+        ? ((mediaRecenteContas - mediaInicioContas) / mediaInicioContas) * 100
+        : null;
 
     let status = "neutro";
     let titulo = "Sem histórico suficiente";
@@ -1875,7 +2316,13 @@ export default function FinancasPage() {
       mesesComDados,
       quantidadeMaximaDisponivel: mesesComDadosDisponiveis.length,
       mediaContas,
+      mediaContasHistorica,
       mediaCartao,
+      mediaMinimaParaContas,
+      entradasAtuais,
+      faltaParaCobrirContas,
+      sobraDepoisDasContas,
+      variacaoContasPercentual,
       mediaDespesas,
       mediaSaldo,
       diferencaDespesas,
@@ -1899,6 +2346,7 @@ export default function FinancasPage() {
     saldoComSalario,
     quantidadeMesesAnalise,
     mostrarAcertosNoResumo,
+    debitarCartaoNaCompra,
   ]);
 
   // Impede que o seletor fique em 4, 5 ou 6 quando esses meses não existem
@@ -1922,8 +2370,9 @@ export default function FinancasPage() {
     const despesasMes = (Array.isArray(transacoes) ? transacoes : [])
       .filter((t) => {
         if (t.origemMovimento === "reserva") return false;
+        if (transacaoEhDeAcerto(t) && !mostrarAcertosNoResumo) return false;
         const dt = new Date(t.dataHora);
-        return t.tipo === "despesa" && inRange(dt);
+        return transacaoEntraComoDespesa(t, debitarCartaoNaCompra) && inRange(dt);
       })
       .map((t) => ({
         id: t.id,
@@ -2068,7 +2517,7 @@ export default function FinancasPage() {
       groupsList,
       blocosList,
     };
-  }, [transacoes, mesReferencia, resumoAtual.gastosFixos, profile?.diaPagamento]);
+  }, [transacoes, mesReferencia, resumoAtual.gastosFixos, profile?.diaPagamento, mostrarAcertosNoResumo, debitarCartaoNaCompra]);
 
   
   /* -------------------- lembretes (compacto) + fallback + sync local -------------------- */
@@ -2488,13 +2937,13 @@ export default function FinancasPage() {
             }}
           >
             <p className="resumo-label" style={{ marginTop: 0 }}>
-              Média mínima para pagar as contas
+              Mínimo mensal para as contas
             </p>
             <p className="resumo-number" style={{ marginBottom: 4 }}>
-              {formatCurrency(historicoFinanceiro.mediaContas)}
+              {formatCurrency(historicoFinanceiro.mediaMinimaParaContas)}
             </p>
             <span className="muted small">
-              Média dos gastos fixos mensais
+              Fixos {formatCurrency(historicoFinanceiro.mediaContas)} · cartão {formatCurrency(historicoFinanceiro.mediaCartao)}
             </span>
           </div>
 
@@ -2507,13 +2956,13 @@ export default function FinancasPage() {
             }}
           >
             <p className="resumo-label" style={{ marginTop: 0 }}>
-              Média para pagar o cartão
+              Uso médio do cartão
             </p>
             <p className="resumo-number" style={{ marginBottom: 4 }}>
               {formatCurrency(historicoFinanceiro.mediaCartao)}
             </p>
             <span className="muted small">
-              Média usada no crédito por mês
+              Valor médio usado no crédito por mês
             </span>
           </div>
 
@@ -2538,6 +2987,67 @@ export default function FinancasPage() {
             </p>
             <span className="muted small">
               {historicoFinanceiro.mensagem}
+            </span>
+            {historicoFinanceiro.mesesComDados.length > 0 && (
+              <div
+                style={{
+                  marginTop: 12,
+                  paddingTop: 10,
+                  borderTop: "1px solid rgba(148, 163, 184, 0.18)",
+                }}
+              >
+                <div>
+                  <span className="muted small">Renda x contas médias</span>
+                  <strong
+                    className={
+                      historicoFinanceiro.faltaParaCobrirContas > 0
+                        ? "negative"
+                        : "positive"
+                    }
+                    style={{ display: "block", marginTop: 3 }}
+                  >
+                    {historicoFinanceiro.faltaParaCobrirContas > 0
+                      ? `Faltam ${formatCurrency(historicoFinanceiro.faltaParaCobrirContas)}`
+                      : `Sobram ${formatCurrency(historicoFinanceiro.sobraDepoisDasContas)}`}
+                  </strong>
+                  <span className="muted small">
+                    {historicoFinanceiro.faltaParaCobrirContas > 0
+                      ? "para cobrir contas fixas e cartão"
+                      : "antes das outras despesas"}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 14,
+              background: "rgba(139, 92, 246, 0.08)",
+              border: "1px solid rgba(139, 92, 246, 0.16)",
+            }}
+          >
+            <p className="resumo-label" style={{ marginTop: 0 }}>
+              Contas fixas no período
+            </p>
+            <p
+              className={
+                historicoFinanceiro.variacaoContasPercentual === null ||
+                historicoFinanceiro.variacaoContasPercentual <= 0
+                  ? "resumo-number positive"
+                  : "resumo-number negative"
+              }
+              style={{ marginBottom: 4 }}
+            >
+              {historicoFinanceiro.variacaoContasPercentual === null
+                ? "—"
+                : `${historicoFinanceiro.variacaoContasPercentual > 0 ? "↑" : "↓"} ${Math.abs(historicoFinanceiro.variacaoContasPercentual).toFixed(1)}%`}
+            </p>
+            <span className="muted small">
+              {historicoFinanceiro.variacaoContasPercentual === null
+                ? "São necessários 2 meses com contas fixas para comparar."
+                : "Comparação entre o começo e os meses mais recentes."}
             </span>
           </div>
         </div>
@@ -2597,22 +3107,18 @@ export default function FinancasPage() {
                 {formatCurrency(Math.abs(historicoFinanceiro.diferencaSaldo))}
               </strong>
             </div>
+
           </div>
         )}
       </div>
 
       {/* RECEITAS / DESPESAS / SALDO / CRÉDITO */}
       <div className="card mt financas-bloco-resumo financas-card-com-ajuda" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
-        <button type="button" className="financas-ajuda-btn" onClick={() => setAjudaAberta({ titulo: "Resumo do mês", texto: "Receitas são entradas normais. Despesas são as saídas do mês. Crédito usado mostra apenas o que foi comprado no cartão. Por padrão, os movimentos de Acertos não entram nesta tela. Toque em Mostrar Acertos somente se quiser incluí-los temporariamente nos números." })} aria-label="Explicação sobre o resumo do mês">?</button>
+        <button type="button" className="financas-ajuda-btn" onClick={() => setAjudaAberta({ titulo: "Resumo do mês", texto: "• Receitas: dinheiro que entrou no mês.\n• Despesas: saídas que já foram descontadas do saldo.\n• Saldo: receitas + reembolsos recebidos − despesas. Verde significa que sobrou; vermelho, que faltou.\n• Crédito usado: total comprado no cartão, mesmo antes de pagar a fatura.\n\nEm Personalizar, você escolhe se o cartão desconta no momento da compra ou somente quando registrar o pagamento da fatura. A escolha fica salva até você alterar. Lá também é possível mostrar ou ocultar os Acertos." })} aria-label="Explicação sobre o resumo do mês">?</button>
         <div className="resumo-grid">
           <div>
             <p className="resumo-label">Receitas do mês</p>
             <p className="resumo-number positive">{formatCurrency(resumoAtual.receitas)}</p>
-            {mostrarAcertosNoResumo && Number(resumoAtual.entradasAcertos || 0) > 0 ? (
-              <span className="muted small">
-                + {formatCurrency(resumoAtual.entradasAcertos)} de reembolsos/acertos entrando no saldo
-              </span>
-            ) : null}
           </div>
           <div>
             <p className="resumo-label">Despesas do mês</p>
@@ -2639,14 +3145,93 @@ export default function FinancasPage() {
             <p className="resumo-number negative">{formatCurrency(resumoAtual.gastosCartao)}</p>
           </div>
         </div>
-        <button
-          type="button"
-          className="chip"
-          style={{ width: "auto", marginTop: 12 }}
-          onClick={() => setMostrarAcertosNoResumo((mostrar) => !mostrar)}
-        >
-          {mostrarAcertosNoResumo ? "Ocultar Acertos" : "Mostrar Acertos"}
-        </button>
+
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
+          <button
+            type="button"
+            className={mostrarPersonalizarResumo ? "toggle-btn toggle-active" : "toggle-btn"}
+            onClick={() => setMostrarPersonalizarResumo((mostrar) => !mostrar)}
+          >
+            {mostrarPersonalizarResumo ? "▲ Fechar personalizar" : "⚙ Personalizar"}
+          </button>
+        </div>
+
+        {mostrarPersonalizarResumo ? (
+          <div
+            style={{
+              display: "grid",
+              gap: 10,
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 12,
+              background: "rgba(59,130,246,.08)",
+            }}
+          >
+            <div>
+              <strong>Acertos</strong>
+              <p className="muted small" style={{ margin: "4px 0 8px" }}>
+                {mostrarAcertosNoResumo
+                  ? `Incluídos. Reembolsos recebidos: ${formatCurrency(resumoAtual.entradasAcertos)}.`
+                  : "Ocultos do resumo financeiro."}
+              </p>
+              <button
+                type="button"
+                className={mostrarAcertosNoResumo ? "toggle-btn toggle-active" : "toggle-btn"}
+                style={{ width: "auto" }}
+                onClick={() => setMostrarAcertosNoResumo((mostrar) => !mostrar)}
+              >
+                {mostrarAcertosNoResumo ? "Ocultar Acertos" : "Mostrar Acertos"}
+              </button>
+            </div>
+
+            <div>
+              <strong>Quando descontar as compras do cartão</strong>
+              <p className="muted small" style={{ margin: "4px 0 8px" }}>
+                {debitarCartaoNaCompra
+                  ? "Na compra: o saldo já diminui quando você usa o cartão."
+                  : "No pagamento: o saldo só diminui quando você registrar o pagamento da fatura."}
+              </p>
+              <button
+                type="button"
+                className="toggle-btn toggle-active"
+                style={{ width: "auto" }}
+                onClick={() => salvarModoDebitoCartao(!debitarCartaoNaCompra)}
+              >
+                {debitarCartaoNaCompra
+                  ? "Descontar ao pagar fatura"
+                  : "Descontar na compra"}
+              </button>
+            </div>
+
+            <div>
+              <strong>Aviso de limite de gastos</strong>
+              <p className="muted small" style={{ margin: "4px 0 8px" }}>
+                Quando suas despesas atingirem o limite, o aviso 😢 aparecerá nesta tela na frequência escolhida.
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <select
+                  value={frequenciaAlertaLimite.modo}
+                  onChange={(evento) => salvarFrequenciaAlertaLimite({ modo: evento.target.value })}
+                  aria-label="Frequência do aviso de limite"
+                >
+                  <option value="horas">A cada horas</option>
+                  <option value="dias">A cada dias</option>
+                  <option value="nunca">Nunca mostrar</option>
+                </select>
+                {frequenciaAlertaLimite.modo !== "nunca" && (
+                  <input
+                    type="number"
+                    min="1"
+                    value={frequenciaAlertaLimite.quantidade}
+                    onChange={(evento) => salvarFrequenciaAlertaLimite({ quantidade: Math.max(1, Number(evento.target.value) || 1) })}
+                    aria-label={`Quantidade de ${frequenciaAlertaLimite.modo}`}
+                    style={{ width: 78 }}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* LIMITE + GASTOS FIXOS */}
@@ -2674,25 +3259,15 @@ export default function FinancasPage() {
 
             <div style={{ display: "grid", gap: 5, marginTop: 8 }}>
               <p className="financas-total-fixos" style={{ margin: 0 }}>
-                Gastos fixos: {" "}
-                <strong>{formatCurrency(resumoAtual.totalGastosFixos)}</strong>
-                <span className="muted small">
-                  {" "}· {resumoAtual.gastosFixos?.length || 0} conta(s)
-                </span>
+                Mínimo do mês (fixos + orçamentos + parcelas): {" "}
+                <strong>{formatCurrency(minimoMensalPlanejado)}</strong>
               </p>
 
               <p className="financas-total-fixos" style={{ margin: 0 }}>
-                Orçamentos variáveis: {" "}
-                <strong>{formatCurrency(totalOrcamentosVariaveis)}</strong>
-                <span className="muted small">
-                  {" "}· {orcamentosVariaveis.length} orçamento(s)
-                </span>
+                Contas já pagas/descontadas: {" "}
+                <strong>{formatCurrency(contasPagasNoMes.total)}</strong>
               </p>
             </div>
-
-            <p className="muted small financas-clique-editar">
-              Clique para cadastrar fixos ou orçamentos.
-            </p>
           </div>
 
           <span className="financas-expandir-icone">
@@ -2733,6 +3308,20 @@ export default function FinancasPage() {
 
         {mostrarGastosFixos && (
           <div className="financas-gastos-fixos-area">
+            <div className="muted small" style={{ marginBottom: 14 }}>
+              <p style={{ margin: "0 0 5px" }}>
+                Orçamentos variáveis: {" "}
+                <strong>{formatCurrency(totalOrcamentosVariaveis)}</strong>
+                {" "}· {orcamentosVariaveis.length} orçamento(s)
+              </p>
+              <p style={{ margin: 0 }}>
+                Contas pagas/descontadas: {formatCurrency(contasPagasNoMes.fixos)} em fixos
+                {contasPagasNoMes.cartao > 0
+                  ? ` + ${formatCurrency(contasPagasNoMes.cartao)} no cartão`
+                  : ""}.
+              </p>
+            </div>
+
             <div
               style={{
                 display: "grid",
@@ -2768,7 +3357,7 @@ export default function FinancasPage() {
                   type="button"
                   className="financas-ajuda-btn"
                   style={{ position: "static", verticalAlign: "middle" }}
-                  onClick={() => setAjudaAberta({ titulo: "Pagamento dos gastos fixos", texto: "Pagamento automático é o modo normal: o gasto entra sozinho na despesa mensal. Ative Pagamento manual somente nos gastos que você quer confirmar. Depois, toque em Já paguei para o valor ser debitado. Se tocar em Desfazer pagamento, ele deixa de entrar novamente." })}
+                  onClick={() => setAjudaAberta({ titulo: "Gastos fixos, orçamento e pagamento", texto: "ORÇAMENTO VARIÁVEL\nÉ a primeira opção ao cadastrar. Use para Feira, combustível ou compras. Ele serve como teto: não cria despesa sozinho. Para descontar, o nome da despesa lançada deve ser EXATAMENTE igual ao nome do orçamento. Exemplo: orçamento “Feira” → descrição da despesa “Feira”.\n\nGASTO FIXO AUTOMÁTICO\nUse para contas que entram todo mês. O valor entra uma vez nos cálculos, mas não cria uma linha no Histórico.\n\nPAGAMENTO MANUAL\nAtive somente quando quiser confirmar antes de descontar. Depois toque em “Quitar / já paguei”. O app cria uma despesa real, atualiza os cálculos e ela aparece no Histórico. O cartão confere se há uma cobrança duplicada. Caso algo tenha sido marcado como pago por erro, use “Marcar como não pago”; o app pede confirmação e remove a despesa criada pelo botão." })}
                   aria-label="Explicação sobre o pagamento dos gastos fixos"
                 >
                   ?
@@ -2786,14 +3375,24 @@ export default function FinancasPage() {
               </div>
             </div>
 
+            <button
+              type="button"
+              className={mostrarFormularioGasto ? "toggle-btn toggle-active" : "primary-btn"}
+              style={{ width: "auto", marginTop: 12 }}
+              onClick={() => setMostrarFormularioGasto((mostrar) => !mostrar)}
+            >
+              {mostrarFormularioGasto ? "▲ Fechar cadastro" : "＋ Criar gasto ou orçamento"}
+            </button>
+
+            {mostrarFormularioGasto ? (
             <div className="financas-gasto-form">
               <select
                 value={modoGastoMensal}
                 onChange={(evento) => setModoGastoMensal(evento.target.value)}
                 aria-label="Tipo de gasto mensal"
               >
-                <option value="fixo">Fixo · lançamento automático</option>
                 <option value="orcamento">Variável · orçamento mensal</option>
+                <option value="fixo">Fixo · lançamento automático</option>
               </select>
 
               <input
@@ -2886,12 +3485,15 @@ export default function FinancasPage() {
                   : "Adicionar gasto fixo"}
               </button>
             </div>
+            ) : null}
 
-            <p className="muted small">
-              Gasto fixo novo entra automaticamente na despesa. Depois você
-              pode ativar o pagamento manual em cada gasto. Orçamento variável
-              não vira despesa: somente os lançamentos reais consomem o valor.
-            </p>
+            {mostrarFormularioGasto ? (
+              <p className="muted small">
+                A primeira opção é o orçamento variável. Ele não vira despesa:
+                somente lançamentos reais consomem seu valor. Gasto fixo pode ser
+                automático ou pago manualmente com o botão de quitar.
+              </p>
+            ) : null}
 
             {gastosFixos.length === 0 ? (
               <p className="muted small financas-gastos-vazio">
@@ -2903,6 +3505,10 @@ export default function FinancasPage() {
                   const ativo = gasto.ativo !== false;
                   const valor = obterValorGastoFixo(gasto);
                   const variavel = ehOrcamentoVariavel(gasto);
+                  const nomesDoOrcamento = String(gasto.nome || "")
+                    .split(",")
+                    .map((nome) => nome.trim())
+                    .filter(Boolean);
                   const pagamentoManual = gasto.pagamentoManual === true;
                   const pagoManualNoMes = gastoFixoFoiPagoManualNoMes(
                     gasto,
@@ -2911,6 +3517,33 @@ export default function FinancasPage() {
                   const resumoVariavel = variavel
                     ? resumoOrcamentoNoMes(gasto, transacoes, chaveMesAtual)
                     : null;
+                  const detalhesDoOrcamento = variavel
+                    ? detalharOrcamentoNoMes(gasto, transacoes, chaveMesAtual)
+                    : [];
+                  const transacoesPagamentoManual = variavel
+                    ? []
+                    : transacoesDoPagamentoManual(
+                        gasto,
+                        transacoes,
+                        chaveMesAtual
+                      );
+                  const totalPagoManual = transacoesPagamentoManual.reduce(
+                    (total, transacao) => total + Number(transacao.valor || 0),
+                    0
+                  );
+                  const pagamentoPossivelmenteDuplicado =
+                    pagamentoManual &&
+                    (transacoesPagamentoManual.length > 1 ||
+                      totalPagoManual > valor + 0.009);
+                  const valorJaPagoDaConta = !pagamentoManual
+                    ? valor
+                    : pagoManualNoMes && totalPagoManual <= 0
+                      ? valor
+                      : Math.min(valor, totalPagoManual);
+                  const valorQueFaltaDaConta = Math.max(
+                    0,
+                    valor - valorJaPagoDaConta
+                  );
 
                   return (
                     <div
@@ -2984,7 +3617,7 @@ export default function FinancasPage() {
                             <strong>{formatCurrency(resumoVariavel.disponivel)}</strong>
                           </div>
                           <div>
-                            <span className="muted small">Gastos reais</span>
+                            <span className="muted small">Gastos reais (sua parte)</span>
                             <br />
                             <strong>{formatCurrency(resumoVariavel.gasto)}</strong>
                           </div>
@@ -3016,60 +3649,82 @@ export default function FinancasPage() {
 
                       {variavel ? (
                         <p className="muted small" style={{ marginTop: 8 }}>
-                          Para consumir este orçamento, lance uma despesa com
-                          o nome <strong>{gasto.nome}</strong>, por exemplo:
-                          {" "}<strong>{gasto.nome} — compra 1</strong>.
+                          ⚠️ Para consumir este orçamento, lance uma despesa
+                          cuja descrição seja <strong>exatamente igual</strong>{" "}
+                          {nomesDoOrcamento.length > 1 ? (
+                            <>
+                              a um destes nomes: {" "}
+                              <strong>{nomesDoOrcamento.join(", ")}</strong>.
+                              Todos consomem o mesmo orçamento de {" "}
+                              <strong>{formatCurrency(resumoVariavel.orcamentoBase)}</strong>.
+                            </>
+                          ) : (
+                            <>
+                              ao nome <strong>{gasto.nome}</strong>. Exemplo:{" "}
+                              <strong>{gasto.nome}</strong>.
+                            </>
+                          )}
+                        </p>
+                      ) : null}
+
+                      {!variavel && ativo ? (
+                        <p
+                          className="muted small"
+                          style={{
+                            margin: "8px 0 0",
+                            color: pagamentoPossivelmenteDuplicado
+                              ? "#dc2626"
+                              : undefined,
+                          }}
+                        >
+                          {!pagamentoManual
+                            ? "✓ Cobrança automática: este valor entra uma vez nos cálculos."
+                            : pagamentoPossivelmenteDuplicado
+                              ? `⚠️ Possível cobrança em dobro: ${transacoesPagamentoManual.length} lançamentos somam ${formatCurrency(totalPagoManual)}. Confira no Histórico antes de continuar.`
+                              : pagoManualNoMes && transacoesPagamentoManual.length === 0
+                                ? "⚠️ Este pagamento foi marcado em uma versão antiga. Ele está nos cálculos, mas não há lançamento no Histórico."
+                                : pagoManualNoMes
+                                ? `✓ Pagamento conferido: 1 lançamento de ${formatCurrency(totalPagoManual)} foi criado no Histórico.`
+                                : "⏳ Aguardando pagamento: ainda não foi debitado nem lançado no Histórico."}
                         </p>
                       ) : null}
 
                       {!variavel && ativo ? (
                         <div
                           style={{
-                            display: "flex",
+                            display: "grid",
+                            gridTemplateColumns: "repeat(2, minmax(120px, 1fr))",
                             gap: 8,
-                            flexWrap: "wrap",
                             marginTop: 10,
                           }}
                         >
-                          <button
-                            type="button"
-                            className={
-                              "toggle-btn " +
-                              (pagamentoManual ? "toggle-active" : "")
-                            }
-                            onClick={() =>
-                              alternarPagamentoManualGastoFixo(gasto.id)
-                            }
-                          >
-                            {pagamentoManual
-                              ? "Pagamento manual: ativado"
-                              : "Pagamento manual: desativado"}
-                          </button>
-
-                          {pagamentoManual ? (
-                            <button
-                              type="button"
-                              className={
-                                pagoManualNoMes ? "toggle-btn" : "primary-btn"
-                              }
-                              style={{ width: "auto" }}
-                              onClick={() =>
-                                marcarGastoFixoComoPago(
-                                  gasto.id,
-                                  !pagoManualNoMes
-                                )
-                              }
-                            >
-                              {pagoManualNoMes
-                                ? "↩ Desfazer pagamento"
-                                : "✓ Já paguei"}
-                            </button>
-                          ) : null}
+                          <div>
+                            <span className="muted small">Já pago/descontado</span>
+                            <br />
+                            <strong>{formatCurrency(valorJaPagoDaConta)}</strong>
+                          </div>
+                          <div>
+                            <span className="muted small">Falta pagar</span>
+                            <br />
+                            <strong style={{ color: valorQueFaltaDaConta > 0 ? "#dc2626" : "#16a34a" }}>
+                              {formatCurrency(valorQueFaltaDaConta)}
+                            </strong>
+                          </div>
                         </div>
                       ) : null}
 
                       {gastoFixoEditando === gasto.id ? (
                         <div className="financas-gasto-edicao">
+                          <input
+                            type="text"
+                            value={nomeGastoEditando}
+                            onChange={(evento) =>
+                              setNomeGastoEditando(evento.target.value)
+                            }
+                            placeholder="Nome do gasto ou orçamento"
+                            style={{ gridColumn: "1 / -1" }}
+                          />
+
                           <select
                             value={modoGastoEditando}
                             onChange={(evento) =>
@@ -3158,18 +3813,103 @@ export default function FinancasPage() {
                           </button>
                         </div>
                       ) : (
-                        <div className="financas-gasto-acoes">
+                        <>
                           <button
                             type="button"
                             className="toggle-btn"
+                            style={{ width: "auto", marginTop: 10 }}
+                            onClick={() =>
+                              setGastoComAcoesAbertas((idAberto) =>
+                                idAberto === gasto.id ? null : gasto.id
+                              )
+                            }
+                          >
+                            {gastoComAcoesAbertas === gasto.id
+                              ? "▲ Fechar opções"
+                              : "⋯ Opções"}
+                          </button>
+
+                          {gastoComAcoesAbertas === gasto.id ? (
+                        <>
+                        <div
+                          className="financas-gasto-acoes"
+                          style={{
+                            display: "flex",
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                            gap: 8,
+                            marginTop: 10,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className="toggle-btn"
+                            style={{ width: "auto", flex: "0 0 auto", whiteSpace: "nowrap" }}
                             onClick={() => iniciarEdicaoGastoFixo(gasto)}
                           >
                             Editar
                           </button>
 
+                          {variavel ? (
+                            <button
+                              type="button"
+                              className="toggle-btn"
+                              style={{ width: "auto", flex: "0 0 auto", whiteSpace: "nowrap" }}
+                              onClick={() =>
+                                setGastoComDetalhamentoAberto((idAberto) =>
+                                  idAberto === gasto.id ? null : gasto.id
+                                )
+                              }
+                            >
+                              {gastoComDetalhamentoAberto === gasto.id
+                                ? "▲ Fechar detalhamento"
+                                : "📊 Detalhamento"}
+                            </button>
+                          ) : null}
+
+                          {!variavel && ativo ? (
+                            <button
+                              type="button"
+                            className={
+                              "toggle-btn " +
+                              (pagamentoManual ? "toggle-active" : "")
+                            }
+                            style={{ width: "auto", flex: "0 0 auto", whiteSpace: "nowrap" }}
+                              onClick={() =>
+                                alternarPagamentoManualGastoFixo(gasto.id)
+                              }
+                            >
+                              {pagamentoManual
+                                ? "Manual: ativado"
+                                : "Manual: desativado"}
+                            </button>
+                          ) : null}
+
+                          {!variavel && ativo ? (
+                            <button
+                              type="button"
+                              className={
+                                pagoManualNoMes ? "toggle-btn" : "primary-btn"
+                              }
+                              style={{ width: "auto", flex: "0 0 auto", whiteSpace: "nowrap" }}
+                              onClick={() =>
+                                marcarGastoFixoComoPago(
+                                  gasto.id,
+                                  !pagoManualNoMes
+                                )
+                              }
+                            >
+                              {pagoManualNoMes
+                                ? "↩ Marcar como não pago"
+                                : "✓ Quitar / já paguei"}
+                            </button>
+                          ) : null}
+
                           <button
                             type="button"
                             className="toggle-btn"
+                            style={{ width: "auto", flex: "0 0 auto", whiteSpace: "nowrap" }}
                             onClick={() => alternarGastoFixo(gasto.id)}
                           >
                             {ativo ? "Desativar" : "Ativar"}
@@ -3178,11 +3918,54 @@ export default function FinancasPage() {
                           <button
                             type="button"
                             className="financas-gasto-remover"
+                            style={{ width: "auto", flex: "0 0 auto", whiteSpace: "nowrap" }}
                             onClick={() => removerGastoFixo(gasto.id)}
                           >
                             Remover
                           </button>
                         </div>
+                        {variavel && gastoComDetalhamentoAberto === gasto.id ? (
+                          <div
+                            style={{
+                              display: "grid",
+                              gap: 8,
+                              marginTop: 10,
+                              padding: 12,
+                              borderRadius: 12,
+                              background: "rgba(59,130,246,.08)",
+                            }}
+                          >
+                            <strong>Detalhamento do mês</strong>
+                            <span className="muted small">
+                              Mostra somente a parte que ficou para você em cada lançamento.
+                            </span>
+                            {detalhesDoOrcamento.map((item) => (
+                              <div
+                                key={item.nome}
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  gap: 10,
+                                  paddingTop: 8,
+                                  borderTop: "1px solid rgba(148,163,184,.16)",
+                                }}
+                              >
+                                <span>
+                                  {item.nome}
+                                  {item.quantidade > 1
+                                    ? ` · ${item.quantidade} lançamentos`
+                                    : item.quantidade === 1
+                                      ? " · 1 lançamento"
+                                      : " · sem lançamento"}
+                                </span>
+                                <strong>{formatCurrency(item.valor)}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        </>
+                          ) : null}
+                        </>
                       )}
                     </div>
                   );
@@ -3415,7 +4198,9 @@ export default function FinancasPage() {
               </div>
               <button type="button" className="financas-fechar-modal" onClick={() => setAjudaAberta(null)} aria-label="Fechar explicação">×</button>
             </div>
-            <p className="financas-texto-ajuda">{ajudaAberta.texto}</p>
+            <p className="financas-texto-ajuda" style={{ whiteSpace: "pre-line" }}>
+              {ajudaAberta.texto}
+            </p>
             <button type="button" className="toggle-btn toggle-active" onClick={() => setAjudaAberta(null)}>Entendi</button>
           </div>
         </div>
@@ -3609,6 +4394,29 @@ export default function FinancasPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {avisoAlteracao && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed",
+            top: 18,
+            right: 18,
+            zIndex: 100000,
+            maxWidth: "min(360px, calc(100vw - 36px))",
+            padding: "12px 16px",
+            borderRadius: 12,
+            color: "#f8fafc",
+            background: "rgba(15, 23, 42, 0.96)",
+            border: "1px solid rgba(96, 165, 250, 0.65)",
+            boxShadow: "0 16px 38px rgba(0,0,0,.32)",
+            fontWeight: 700,
+          }}
+        >
+          {avisoAlteracao}
         </div>
       )}
 
