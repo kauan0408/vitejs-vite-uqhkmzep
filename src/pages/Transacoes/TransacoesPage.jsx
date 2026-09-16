@@ -30,6 +30,13 @@
     });
   }
 
+  // Igual à maquininha: os últimos dois números sempre são os centavos.
+  function moedaMaquininha(valor) {
+    const digitos = String(valor || "").replace(/\D/g, "");
+    if (!digitos) return "";
+    return (Number(digitos) / 100).toFixed(2).replace(".", ",");
+  }
+
   function normalizeText(s) {
     return String(s || "")
       .trim()
@@ -1038,6 +1045,30 @@
         .map((linha) => linha.replace(/\s{2,}/g, " ").trim())
         .filter(Boolean);
       const encontrados = [];
+      const agoraFoto = new Date();
+      const textoPlano = linhas.join(" ");
+
+      // Conta de luz, água, internet etc.: uma fatura inteira é um lançamento.
+      const totalConta = textoPlano.match(/total\s+a\s+pagar\s*(?:r\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2})/i);
+      if (totalConta) {
+        const descricaoConta = /cemig/i.test(textoPlano) ? "Conta de energia CEMIG" : "Conta a pagar";
+        return [{ id: novoIdLote(), origem: "foto", tipo: "despesa", valor: converterValorBRL(totalConta[1]).toFixed(2), descricao: descricaoConta, categoria: "Essencial", formaPagamento: "outros", cartaoId: "", data: toInputDateLocal(agoraFoto), hora: toInputTimeLocal(agoraFoto), textoOriginal: textoPlano }];
+      }
+
+      // Cupom de mercado: cada linha que tem quantidade/unidade e dois preços
+      // vira uma compra separada. O último preço da linha é o total do item.
+      if (/cupom\s+fiscal|qtd\.?\s*unid|valor\s+total/i.test(textoPlano)) {
+        linhas.forEach((linha) => {
+          const valores = [...linha.matchAll(/(\d{1,3}(?:\.\d{3})*,\d{2})/g)].map((m) => converterValorBRL(m[1]));
+          const temQuantidade = /\b\d+(?:[.,]\d+)?\s*(?:un|und|pt|pct|kg|g|fr|lt|ml|cx)\b/i.test(linha);
+          if (!temQuantidade || valores.length < 2) return;
+          const descricaoItem = linha.replace(/^\s*\d{6,}\s*/g, "").replace(/\b\d+(?:[.,]\d+)?\s*(?:un|und|pt|pct|kg|g|fr|lt|ml|cx)\b.*$/i, "").replace(/\s{2,}/g, " ").trim();
+          if (!descricaoItem) return;
+          const totalItem = valores[valores.length - 1];
+          encontrados.push({ id: novoIdLote(), origem: "foto", tipo: "despesa", valor: totalItem.toFixed(2), descricao: descricaoItem, categoria: categoriaPorDescricao(descricaoItem), formaPagamento: "outros", cartaoId: "", data: toInputDateLocal(agoraFoto), hora: toInputTimeLocal(agoraFoto), textoOriginal: linha });
+        });
+        if (encontrados.length) return encontrados;
+      }
 
       for (let indice = 0; indice < linhas.length; indice += 1) {
         const classificacao = classificarTituloNotificacao(linhas[indice]);
@@ -1070,8 +1101,8 @@
           categoria: classificacao.tipo === "despesa" ? categoriaPorDescricao(descricaoFoto) : "Essencial",
           formaPagamento: classificacao.formaPagamento,
           cartaoId: "",
-          data: toInputDateLocal(new Date()),
-          hora: toInputTimeLocal(new Date()),
+          data: toInputDateLocal(agoraFoto),
+          hora: toInputTimeLocal(agoraFoto),
           textoOriginal: bloco,
         });
       }
@@ -1704,10 +1735,10 @@
             <div className="field">
               <label>Valor (R$)</label>
               <input
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="numeric"
                 value={valor}
-                onChange={(e) => setValor(e.target.value)}
+                onChange={(e) => setValor(moedaMaquininha(e.target.value))}
               />
             </div>
 
