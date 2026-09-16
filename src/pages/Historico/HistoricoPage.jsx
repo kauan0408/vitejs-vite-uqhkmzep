@@ -190,6 +190,104 @@ function valorComSinal(tipo, valor) {
   return 0;
 }
 
+function transacaoVeioDeAcertos(transacao) {
+  const origem = String(
+    transacao?.origemMovimento || transacao?.origem || ""
+  ).toLowerCase();
+
+  return (
+    origem === "quem_me_deve" ||
+    origem === "quem-me-deve" ||
+    origem === "acertos" ||
+    transacao?.ehAcerto === true
+  );
+}
+
+function obterDetalhesAcerto(transacao, quemMeDeve) {
+  if (!transacaoVeioDeAcertos(transacao)) return null;
+
+  const pessoas = Array.isArray(quemMeDeve?.pessoas)
+    ? quemMeDeve.pessoas
+    : [];
+  const lancamentos = Array.isArray(quemMeDeve?.lancamentos)
+    ? quemMeDeve.lancamentos
+    : [];
+  const grupos = Array.isArray(quemMeDeve?.grupos)
+    ? quemMeDeve.grupos
+    : [];
+  const grupoId = transacao?.quemMeDeveGrupoId || transacao?.grupoId;
+
+  const partes = lancamentos.filter(
+    (lancamento) =>
+      String(lancamento?.transacaoId || "") === String(transacao?.id || "") ||
+      (grupoId && String(lancamento?.grupoId || "") === String(grupoId))
+  );
+
+  const total = Number(
+    transacao?.valorTotal || partes[0]?.valorTotal || transacao?.valor || 0
+  );
+  const totalDasOutrasPessoas = partes.reduce(
+    (soma, parte) => soma + Number(parte?.valor || 0),
+    0
+  );
+  const sentido = partes[0]?.sentido ||
+    (transacao?.tipo === "nulo" ? "eu_devo" : "me_deve");
+  const minhaParteDireta = Number(
+    transacao?.minhaParteValor ?? transacao?.minhaParte ?? NaN
+  );
+  const minhaParte = Number.isFinite(minhaParteDireta)
+    ? minhaParteDireta
+    : sentido === "eu_devo"
+      ? totalDasOutrasPessoas || total
+      : Math.max(0, total - totalDasOutrasPessoas);
+
+  const nomesPessoas = partes.map((parte) => {
+    const pessoa = pessoas.find((item) => String(item?.id) === String(parte?.pessoaId));
+    return pessoa?.nome || "Pessoa não encontrada";
+  });
+  const grupo = grupos.find((item) => String(item?.id) === String(grupoId));
+
+  return {
+    total,
+    minhaParte,
+    sentido,
+    nomesPessoas,
+    nomeGrupo: grupo?.nome || "",
+  };
+}
+
+function DetalhesAcerto({ transacao, quemMeDeve }) {
+  const detalhes = obterDetalhesAcerto(transacao, quemMeDeve);
+  if (!detalhes) return null;
+
+  const pessoas = detalhes.nomesPessoas.length
+    ? detalhes.nomesPessoas.join(", ")
+    : "Não informado";
+
+  return (
+    <div
+      className="muted small"
+      style={{
+        display: "grid",
+        gap: 3,
+        marginTop: 7,
+        padding: "8px 10px",
+        borderLeft: "3px solid #60a5fa",
+        background: "rgba(59,130,246,.08)",
+        borderRadius: 8,
+      }}
+    >
+      <strong>👥 Veio de Acertos</strong>
+      <span>Valor total: <b>{formatCurrency(detalhes.total)}</b></span>
+      <span>
+        {detalhes.sentido === "eu_devo" ? "Minha parte que devo" : "Minha parte"}: <b>{formatCurrency(detalhes.minhaParte)}</b>
+      </span>
+      {detalhes.nomeGrupo ? <span>Grupo: <b>{detalhes.nomeGrupo}</b></span> : null}
+      <span>Dividido com: <b>{pessoas}</b></span>
+    </div>
+  );
+}
+
 // Componente principal da página de Histórico
 export default function HistoricoPage() {
   // Puxa do contexto:
@@ -205,6 +303,7 @@ export default function HistoricoPage() {
     removerTransacao,
     mesReferencia, // 👈 mês da Visão geral
     profile,
+    quemMeDeve,
   } = useFinance();
 
   // Estados dos filtros (o usuário mexe na UI e isso muda a lista exibida)
@@ -1137,6 +1236,10 @@ export default function HistoricoPage() {
                                 {t.categoria && ` · ${categoriaLabel(t.categoria)}`}
                                 {t.origemMovimento === "quem_me_deve" ? " · 👥 Acertos" : ""}
                               </div>
+                              <DetalhesAcerto
+                                transacao={t}
+                                quemMeDeve={quemMeDeve}
+                              />
                             </div>
 
                             {/* Valor e ações */}
@@ -1234,6 +1337,10 @@ export default function HistoricoPage() {
                         {t.categoria && ` · ${categoriaLabel(t.categoria)}`}
                         {t.origemMovimento === "quem_me_deve" ? " · 👥 Acertos" : ""}
                       </div>
+                      <DetalhesAcerto
+                        transacao={t}
+                        quemMeDeve={quemMeDeve}
+                      />
 
                       {/* Se for compra parcelada, mostra info do parcelamento e total */}
                       {t.parcelaTotal && t.parcelaTotal > 1 && (
